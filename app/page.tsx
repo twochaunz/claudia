@@ -49,10 +49,10 @@ export default function Home() {
   if (!hasMessages) {
     return (
       <div
-        className="flex items-center justify-center h-screen"
+        className="grid place-items-center h-dvh overflow-hidden"
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
-        <div className="w-full max-w-3xl mx-auto px-4">
+        <div className="w-full max-w-3xl px-4">
           <div className="flex items-center justify-center gap-3 mb-6">
             <Image
               src="/claude-logo.svg"
@@ -83,7 +83,7 @@ export default function Home() {
               autoFocus
               placeholder="How can I help you today?"
               rows={1}
-              className="flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)] placeholder:text-center text-center"
+              className="flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
               style={{ color: "var(--text-primary)" }}
             />
             <button
