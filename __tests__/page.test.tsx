@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
 
@@ -46,11 +46,11 @@ describe("Home (Chat Page)", () => {
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     // Advance past max thinking time
-    jest.advanceTimersByTime(9000);
-
-    await waitFor(() => {
-      expect(screen.getByText("si papi")).toBeInTheDocument();
+    await act(async () => {
+      jest.advanceTimersByTime(9000);
     });
+
+    expect(screen.getByText("si papi")).toBeInTheDocument();
 
     jest.useRealTimers();
   });
