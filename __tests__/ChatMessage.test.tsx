@@ -14,11 +14,11 @@ describe("ChatMessage", () => {
 
   it("renders Claude logo for assistant messages", () => {
     render(<ChatMessage role="assistant" content="si papi" />);
-    expect(screen.getByAltText("Claude")).toBeInTheDocument();
+    expect(screen.getByAltText("Claudia")).toBeInTheDocument();
   });
 
   it("does not render Claude logo for user messages", () => {
     render(<ChatMessage role="user" content="hello" />);
-    expect(screen.queryByAltText("Claude")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("Claudia")).not.toBeInTheDocument();
   });
 });

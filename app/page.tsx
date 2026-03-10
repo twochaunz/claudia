@@ -42,7 +42,7 @@ export default function Home() {
           <div className="flex items-center justify-center gap-3 mb-8">
             <Image
               src="/claude-logo.svg"
-              alt="Claude"
+              alt="Claudia"
               width={32}
               height={32}
             />
@@ -67,9 +67,9 @@ export default function Home() {
         style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
       >
         <div className="flex items-center gap-2">
-          <img src="/claude-logo.svg" alt="Claude" width={24} height={24} />
+          <img src="/claude-logo.svg" alt="Claudia" width={24} height={24} />
           <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)" }}>
-            Claude
+            Claudia
           </span>
         </div>
       </header>

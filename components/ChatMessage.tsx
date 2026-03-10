@@ -24,7 +24,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       <div className="flex-shrink-0 w-7 h-7 mt-1">
         <Image
           src="/claude-logo.svg"
-          alt="Claude"
+          alt="Claudia"
           width={28}
           height={28}
           className="rounded-full"

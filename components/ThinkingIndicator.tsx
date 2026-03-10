@@ -30,7 +30,7 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
       <div className="flex-shrink-0 w-7 h-7 mt-1">
         <Image
           src="/claude-logo.svg"
-          alt="Claude"
+          alt="Claudia"
           width={28}
           height={28}
           className="rounded-full"
