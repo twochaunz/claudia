@@ -15,7 +15,7 @@
 ```
 sipapi/
 ├── app/
-│   ├── layout.tsx          — Root layout, fonts (Inter), metadata
+│   ├── layout.tsx          — Root layout, fonts (serif), metadata
 │   ├── page.tsx            — Main chat page, state management, thinking logic
 │   └── globals.css         — Global styles, Tailwind imports, custom animations
 ├── components/
@@ -119,7 +119,7 @@ Create `public/claude-logo.svg` — a simplified version of Claude's sparkle/ast
 
 ```svg
 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M12 2C12 2 13.5 8.5 15.5 10.5C17.5 12.5 24 12 24 12C24 12 17.5 13.5 15.5 15.5C13.5 17.5 12 24 12 24C12 24 10.5 17.5 8.5 15.5C6.5 13.5 0 12 0 12C0 12 6.5 10.5 8.5 8.5C10.5 6.5 12 2 12 2Z" fill="#D97757"/>
+  <path d="M12 2C12 2 13.5 8.5 15.5 10.5C17.5 12.5 24 12 24 12C24 12 17.5 13.5 15.5 15.5C13.5 17.5 12 24 12 24C12 24 10.5 17.5 8.5 15.5C6.5 13.5 0 12 0 12C0 12 6.5 10.5 8.5 8.5C10.5 6.5 12 2 12 2Z" fill="#da7756"/>
 </svg>
 ```
 
@@ -131,16 +131,17 @@ Replace `app/globals.css` with:
 @import "tailwindcss";
 
 :root {
-  --bg-primary: #F5F4EF;
+  --bg-primary: #F5F5F0;
   --bg-chat: #FFFFFF;
-  --bg-user-bubble: #F0EDE8;
-  --text-primary: #1A1A1A;
-  --text-secondary: #6B6560;
-  --border-color: #E5E1DB;
-  --accent-orange: #D97757;
+  --bg-user-bubble: #DDD9CE;
+  --text-primary: #1a1a18;
+  --text-secondary: #6b6a68;
+  --border-color: #e5e1db;
+  --accent-orange: #ae5630;
+  --accent-orange-hover: #c4633a;
   --accent-orange-light: #F5E6DE;
   --input-bg: #FFFFFF;
-  --input-border: #D9D5CF;
+  --input-border: #d9d5cf;
   --thinking-bg: #F9F8F5;
 }
 
@@ -154,7 +155,7 @@ html, body {
   padding: 0;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -196,13 +197,7 @@ Replace `app/layout.tsx` with:
 
 ```tsx
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Claude",
@@ -215,7 +210,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={inter.className}>
+    <html lang="en">
       <body>{children}</body>
     </html>
   );
@@ -466,13 +461,13 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   };
 
   return (
-    <div className="w-full max-w-[680px] mx-auto px-4 pb-4 pt-2">
+    <div className="w-full max-w-3xl mx-auto px-4 pb-4 pt-2">
       <div
         className="flex items-end gap-2 rounded-2xl border px-4 py-3"
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+          boxShadow: "0 0.25rem 1.25rem rgba(0,0,0,0.035)",
         }}
       >
         <textarea
@@ -683,7 +678,7 @@ export function MessageList({ messages, isThinking }: MessageListProps) {
 
   return (
     <div className="flex-1 overflow-y-auto chat-scroll">
-      <div className="max-w-[680px] mx-auto px-4 py-6">
+      <div className="max-w-3xl mx-auto px-4 py-6">
         {messages.length === 0 && !isThinking && (
           <div className="flex flex-col items-center justify-center h-full min-h-[60vh]">
             <Image
