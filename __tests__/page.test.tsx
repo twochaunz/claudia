@@ -11,7 +11,7 @@ jest.mock("next/image", () => ({
 describe("Home (Chat Page)", () => {
   it("renders the initial empty state", () => {
     render(<Home />);
-    expect(screen.getByText("How can I help you today?")).toBeInTheDocument();
+    expect(screen.getByText("Claudia")).toBeInTheDocument();
   });
 
   it("shows user message after sending", async () => {

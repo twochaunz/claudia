@@ -35,24 +35,24 @@ export default function Home() {
     // Landing page: centered greeting + input, like Claude's home screen
     return (
       <div
-        className="flex flex-col items-center justify-center h-screen px-4"
+        className="flex flex-col items-center justify-center h-screen"
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
-        <div className="w-full max-w-3xl px-4">
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <Image
-              src="/claude-logo.svg"
-              alt="Claudia"
-              width={32}
-              height={32}
-            />
-            <h1
-              className="text-[32px] font-normal"
-              style={{ color: "var(--text-primary)" }}
-            >
-              How can I help you today?
-            </h1>
-          </div>
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <Image
+            src="/claude-logo.svg"
+            alt="Claudia"
+            width={32}
+            height={32}
+          />
+          <h1
+            className="text-[32px] font-normal"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Claudia
+          </h1>
+        </div>
+        <div className="w-full">
           <ChatInput onSend={handleSend} disabled={false} />
         </div>
       </div>
