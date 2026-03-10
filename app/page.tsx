@@ -32,28 +32,27 @@ export default function Home() {
   const hasMessages = messages.length > 0 || isThinking;
 
   if (!hasMessages) {
-    // Landing page: centered logo + input, like Claude's home screen
+    // Landing page: centered greeting + input, like Claude's home screen
     return (
       <div
         className="flex flex-col items-center justify-center h-screen px-4"
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
-        <div className="flex flex-col items-center mb-8">
-          <Image
-            src="/claude-logo.svg"
-            alt="Claude"
-            width={40}
-            height={40}
-            className="mb-4 opacity-40"
-          />
-          <p
-            className="text-[18px] font-medium"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            How can I help you today?
-          </p>
-        </div>
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-3xl px-4">
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <Image
+              src="/claude-logo.svg"
+              alt="Claude"
+              width={32}
+              height={32}
+            />
+            <h1
+              className="text-[32px] font-normal"
+              style={{ color: "var(--text-primary)" }}
+            >
+              How can I help you today?
+            </h1>
+          </div>
           <ChatInput onSend={handleSend} disabled={false} />
         </div>
       </div>

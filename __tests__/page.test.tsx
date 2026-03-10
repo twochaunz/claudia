@@ -18,7 +18,7 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup();
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("Reply to Claude...");
+    const textarea = screen.getByPlaceholderText("How can I help you today?");
     await user.type(textarea, "what is 2+2?");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
@@ -29,7 +29,7 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup();
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("Reply to Claude...");
+    const textarea = screen.getByPlaceholderText("How can I help you today?");
     await user.type(textarea, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
@@ -41,7 +41,7 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("Reply to Claude...");
+    const textarea = screen.getByPlaceholderText("How can I help you today?");
     await user.type(textarea, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 

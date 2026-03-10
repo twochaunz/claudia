@@ -51,7 +51,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          placeholder="Reply to Claude..."
+          placeholder="How can I help you today?"
           rows={1}
           className="flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none placeholder:text-[var(--text-secondary)]"
           style={{ color: "var(--text-primary)", maxHeight: "200px" }}
