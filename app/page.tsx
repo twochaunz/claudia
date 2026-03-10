@@ -68,7 +68,7 @@ export default function Home() {
             </h1>
           </div>
           <div
-            className="flex items-end gap-2 rounded-2xl border px-4 py-3"
+            className="flex items-center gap-2 rounded-2xl border px-4 py-3"
             style={{
               backgroundColor: "var(--input-bg)",
               borderColor: "var(--input-border)",
