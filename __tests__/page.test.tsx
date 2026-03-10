@@ -45,9 +45,9 @@ describe("Home (Chat Page)", () => {
     await user.type(textarea, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    // Advance past max thinking time
+    // Advance past max thinking time (capped at 12s)
     await act(async () => {
-      jest.advanceTimersByTime(9000);
+      jest.advanceTimersByTime(13000);
     });
 
     expect(screen.getByText("si papi")).toBeInTheDocument();

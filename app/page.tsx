@@ -17,7 +17,11 @@ export default function Home() {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
 
-    const delay = Math.random() * 6000 + 2000; // 2-8 seconds
+    // Scale thinking time with message length: ~1.5s base + 30ms per char, capped at 12s
+    const baseDelay = 1500;
+    const perChar = 30 * text.length;
+    const jitter = Math.random() * 2000 - 1000; // +/- 1s randomness
+    const delay = Math.min(baseDelay + perChar + jitter, 12000);
     setTimeout(() => {
       setIsThinking(false);
       setMessages((prev) => [...prev, { role: "assistant", content: "si papi" }]);
