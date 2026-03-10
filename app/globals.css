@@ -17,18 +17,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary: #2b2a27;
-    --bg-chat: #1f1e1b;
-    --bg-user-bubble: #393937;
-    --text-primary: #eeeeee;
+    --bg-primary: #262624;
+    --bg-chat: #1a1a19;
+    --bg-user-bubble: #363634;
+    --text-primary: #e8e8e3;
     --text-secondary: #9a9893;
-    --border-color: #3d3d3a;
+    --border-color: #3a3a37;
     --accent-orange: #ae5630;
     --accent-orange-hover: #c4633a;
     --accent-orange-light: #3d2e24;
-    --input-bg: #1f1e1b;
-    --input-border: #3d3d3a;
-    --thinking-bg: #33322f;
+    --input-bg: #2f2f2d;
+    --input-border: #3a3a37;
+    --thinking-bg: #2e2e2c;
   }
 }
 
