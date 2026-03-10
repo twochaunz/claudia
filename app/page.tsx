@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, KeyboardEvent } from "react";
 import Image from "next/image";
 import { MessageList } from "@/components/MessageList";
 import { ChatInput } from "@/components/ChatInput";
@@ -13,15 +13,16 @@ interface Message {
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [landingValue, setLandingValue] = useState("");
+  const landingRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = useCallback((text: string) => {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
 
-    // Scale thinking time with message length: ~1.5s base + 30ms per char, capped at 12s
     const baseDelay = 1500;
     const perChar = 30 * text.length;
-    const jitter = Math.random() * 2000 - 1000; // +/- 1s randomness
+    const jitter = Math.random() * 2000 - 1000;
     const delay = Math.min(baseDelay + perChar + jitter, 12000);
     setTimeout(() => {
       setIsThinking(false);
@@ -29,31 +30,76 @@ export default function Home() {
     }, delay);
   }, []);
 
+  const handleLandingSend = () => {
+    const trimmed = landingValue.trim();
+    if (!trimmed) return;
+    handleSend(trimmed);
+    setLandingValue("");
+  };
+
+  const handleLandingKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleLandingSend();
+    }
+  };
+
   const hasMessages = messages.length > 0 || isThinking;
 
   if (!hasMessages) {
-    // Landing page: centered greeting + input, like Claude's home screen
     return (
       <div
-        className="flex flex-col items-center justify-center h-screen"
+        className="flex items-center justify-center h-screen"
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <Image
-            src="/claude-logo.svg"
-            alt="Claudia"
-            width={32}
-            height={32}
-          />
-          <h1
-            className="text-[32px] font-normal"
-            style={{ color: "var(--text-primary)" }}
+        <div className="w-full max-w-3xl mx-auto px-4">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <Image
+              src="/claude-logo.svg"
+              alt="Claudia"
+              width={32}
+              height={32}
+            />
+            <h1
+              className="text-[32px] font-normal"
+              style={{ color: "var(--text-primary)" }}
+            >
+              Claudia
+            </h1>
+          </div>
+          <div
+            className="flex items-end gap-2 rounded-2xl border px-4 py-3"
+            style={{
+              backgroundColor: "var(--input-bg)",
+              borderColor: "var(--input-border)",
+              boxShadow: "0 0.25rem 1.25rem rgba(0,0,0,0.035)",
+            }}
           >
-            Claudia
-          </h1>
-        </div>
-        <div className="w-full">
-          <ChatInput onSend={handleSend} disabled={false} />
+            <textarea
+              ref={landingRef}
+              value={landingValue}
+              onChange={(e) => setLandingValue(e.target.value)}
+              onKeyDown={handleLandingKeyDown}
+              autoFocus
+              placeholder="How can I help you today?"
+              rows={1}
+              className="flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+              style={{ color: "var(--text-primary)" }}
+            />
+            <button
+              onClick={handleLandingSend}
+              disabled={!landingValue.trim()}
+              aria-label="Send"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors disabled:opacity-30"
+              style={{
+                backgroundColor: landingValue.trim() ? "var(--accent-orange)" : "var(--border-color)",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -61,7 +107,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
-      {/* Header */}
       <header
         className="flex items-center justify-center py-3 border-b"
         style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
@@ -74,10 +119,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Messages */}
       <MessageList messages={messages} isThinking={isThinking} />
 
-      {/* Input */}
       <ChatInput onSend={handleSend} disabled={isThinking} />
     </div>
   );
