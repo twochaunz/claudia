@@ -83,7 +83,7 @@ export default function Home() {
               autoFocus
               placeholder="How can I help you today?"
               rows={1}
-              className="flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+              className="flex-1 resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)] placeholder:text-center text-center"
               style={{ color: "var(--text-primary)" }}
             />
             <button
