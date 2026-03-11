@@ -5,9 +5,10 @@ import Image from "next/image";
 
 interface ThinkingIndicatorProps {
   isVisible: boolean;
+  logoSrc?: string;
 }
 
-export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
+export function ThinkingIndicator({ isVisible, logoSrc = "/claude-logo.svg" }: ThinkingIndicatorProps) {
   const [elapsed, setElapsed] = useState(0);
   const [expanded, setExpanded] = useState(true);
 
@@ -29,8 +30,8 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
     <div className="flex gap-3 mb-4 animate-fade-in">
       <div className="flex-shrink-0 w-7 h-7 mt-1">
         <Image
-          src="/claude-logo.svg"
-          alt="Claudia"
+          src={logoSrc}
+          alt="Assistant"
           width={28}
           height={28}
           className="rounded-full"

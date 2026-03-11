@@ -10,9 +10,30 @@ interface Message {
   content: string;
 }
 
+type Persona = "claudia" | "consuela";
+
+const CONSUELA_QUOTES = [
+  "No, no, no",
+  "No... no... no... I stay",
+  "Oh, no... no",
+  "No... no... Mr. Superman no home",
+  "No... no... no is... no",
+  "No... no... afuera",
+  "I... nooo... no",
+  "No... I keep job",
+];
+
+function getResponse(persona: Persona): string {
+  if (persona === "consuela") {
+    return CONSUELA_QUOTES[Math.floor(Math.random() * CONSUELA_QUOTES.length)];
+  }
+  return "si papi";
+}
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [persona, setPersona] = useState<Persona>("claudia");
   const [landingValue, setLandingValue] = useState("");
   const landingRef = useRef<HTMLTextAreaElement>(null);
 
@@ -26,9 +47,9 @@ export default function Home() {
     const delay = Math.min(baseDelay + perChar + jitter, 12000);
     setTimeout(() => {
       setIsThinking(false);
-      setMessages((prev) => [...prev, { role: "assistant", content: "si papi" }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: getResponse(persona) }]);
     }, delay);
-  }, []);
+  }, [persona]);
 
   const handleLandingSend = () => {
     const trimmed = landingValue.trim();
@@ -44,7 +65,28 @@ export default function Home() {
     }
   };
 
+  const handleToggle = () => {
+    setPersona((p) => (p === "claudia" ? "consuela" : "claudia"));
+    setMessages([]);
+    setIsThinking(false);
+  };
+
+  const displayName = persona === "claudia" ? "Claudia" : "Consuela";
+  const logoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
   const hasMessages = messages.length > 0 || isThinking;
+
+  const personaToggle = (
+    <button
+      className="px-3 py-1 rounded-full text-[13px] font-medium border cursor-default opacity-50"
+      style={{
+        backgroundColor: "transparent",
+        color: "var(--text-secondary)",
+        borderColor: "var(--border-color)",
+      }}
+    >
+      Switch to Consuela
+    </button>
+  );
 
   if (!hasMessages) {
     return (
@@ -54,17 +96,19 @@ export default function Home() {
       >
         <div className="w-full max-w-3xl px-4">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <Image
-              src="/claude-logo.svg"
-              alt="Claudia"
-              width={32}
-              height={32}
-            />
+            <button onClick={handleToggle} className="cursor-pointer bg-transparent border-none p-0 transition-transform hover:scale-110 active:scale-95">
+              <Image
+                src={logoSrc}
+                alt={displayName}
+                width={32}
+                height={32}
+              />
+            </button>
             <h1
               className="text-[32px] font-normal"
               style={{ color: "var(--text-primary)" }}
             >
-              Claudia
+              {displayName}
             </h1>
           </div>
           <div
@@ -100,6 +144,9 @@ export default function Home() {
               </svg>
             </button>
           </div>
+          <div className="flex justify-center mt-4">
+            {personaToggle}
+          </div>
         </div>
       </div>
     );
@@ -108,18 +155,24 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
       <header
-        className="flex items-center justify-center py-3 border-b"
+        className="flex items-center justify-between px-4 py-3 border-b"
         style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
       >
+        <div className="w-[140px]" />
         <div className="flex items-center gap-2">
-          <img src="/claude-logo.svg" alt="Claudia" width={24} height={24} />
+          <button onClick={handleToggle} className="cursor-pointer bg-transparent border-none p-0 transition-transform hover:scale-110 active:scale-95">
+            <img src={logoSrc} alt={displayName} width={24} height={24} />
+          </button>
           <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)" }}>
-            Claudia
+            {displayName}
           </span>
+        </div>
+        <div className="w-[140px] flex justify-end">
+          {personaToggle}
         </div>
       </header>
 
-      <MessageList messages={messages} isThinking={isThinking} />
+      <MessageList messages={messages} isThinking={isThinking} logoSrc={logoSrc} />
 
       <ChatInput onSend={handleSend} disabled={isThinking} />
     </div>

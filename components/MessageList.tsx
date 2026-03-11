@@ -12,9 +12,10 @@ interface Message {
 interface MessageListProps {
   messages: Message[];
   isThinking: boolean;
+  logoSrc?: string;
 }
 
-export function MessageList({ messages, isThinking }: MessageListProps) {
+export function MessageList({ messages, isThinking, logoSrc = "/claude-logo.svg" }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,9 +26,9 @@ export function MessageList({ messages, isThinking }: MessageListProps) {
     <div className="flex-1 overflow-y-auto chat-scroll">
       <div className="max-w-3xl mx-auto px-4 py-6">
         {messages.map((msg, i) => (
-          <ChatMessage key={i} role={msg.role} content={msg.content} />
+          <ChatMessage key={i} role={msg.role} content={msg.content} logoSrc={logoSrc} />
         ))}
-        <ThinkingIndicator isVisible={isThinking} />
+        <ThinkingIndicator isVisible={isThinking} logoSrc={logoSrc} />
         <div ref={bottomRef} />
       </div>
     </div>
