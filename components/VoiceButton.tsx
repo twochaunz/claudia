@@ -14,8 +14,12 @@ interface SpeechRecognitionEvent {
 
 export function VoiceButton({ onTranscript, disabled }: VoiceButtonProps) {
   const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const supported = typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+
+  useEffect(() => {
+    setSupported("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+  }, []);
 
   const stop = useCallback(() => {
     if (recognitionRef.current) {
@@ -83,12 +87,10 @@ export function VoiceButton({ onTranscript, disabled }: VoiceButtonProps) {
     };
   }, []);
 
-  if (!supported) return null;
-
   return (
     <button
       onClick={toggle}
-      disabled={disabled}
+      disabled={disabled || !supported}
       aria-label={listening ? "Stop listening" : "Start voice input"}
       className={`flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-30 cursor-pointer bg-transparent border-none ${listening ? "voice-pulse" : ""}`}
       style={{
