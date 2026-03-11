@@ -102,7 +102,7 @@ export default function Home() {
       >
         <div className="flex items-center gap-2">
           <img src={logoSrc} alt={displayName} width={24} height={24} />
-          <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)" }}>
+          <span className="text-[24px] font-normal" style={{ color: "var(--text-primary)" }}>
             {displayName}
           </span>
         </div>
@@ -117,7 +117,7 @@ export default function Home() {
         onPersonaChange={handlePersonaChange}
       />
       <p
-        className="text-center text-[13px] -mt-2 pb-1"
+        className="text-center text-[13px] pb-2"
         style={{ color: "var(--text-secondary)" }}
       >
         Claudia and Consuela can make mistakes. Please double-check responses.

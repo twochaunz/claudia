@@ -52,7 +52,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const placeholder = isLanding ? "How are you doing today?" : "Reply...";
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 pb-4 pt-2">
+    <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2">
       <div
         className="flex flex-col rounded-2xl border px-4 py-3"
         style={{
