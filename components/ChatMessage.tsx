@@ -21,8 +21,8 @@ export function ChatMessage({ role, content, logoSrc = "/claude-logo.svg" }: Cha
   }
 
   return (
-    <div className="flex gap-3 mb-4 animate-fade-in">
-      <div className="flex-shrink-0 w-7 h-7 mt-1">
+    <div className="flex items-start gap-3 mb-4 animate-fade-in">
+      <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center" style={{ marginTop: "2px" }}>
         <Image
           src={logoSrc}
           alt="Assistant"
@@ -32,7 +32,7 @@ export function ChatMessage({ role, content, logoSrc = "/claude-logo.svg" }: Cha
         />
       </div>
       <div
-        className="text-[15px] leading-relaxed flex-1"
+        className="text-[15px] leading-relaxed flex-1 pt-[2px]"
         style={{ color: "var(--text-primary)" }}
       >
         {content}

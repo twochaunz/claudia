@@ -8,6 +8,7 @@ import { ChatInput } from "@/components/ChatInput";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  logoSrc?: string;
 }
 
 type Persona = "claudia" | "consuela";
@@ -39,13 +40,14 @@ export default function Home() {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
 
+    const currentLogoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
     const baseDelay = 1500;
     const perChar = 30 * text.length;
     const jitter = Math.random() * 2000 - 1000;
     const delay = Math.min(baseDelay + perChar + jitter, 12000);
     setTimeout(() => {
       setIsThinking(false);
-      setMessages((prev) => [...prev, { role: "assistant", content: getResponse(persona) }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: getResponse(persona), logoSrc: currentLogoSrc }]);
     }, delay);
   }, [persona]);
 
