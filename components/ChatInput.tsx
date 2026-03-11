@@ -38,7 +38,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-4 pt-2">
       <div
-        className="flex items-end gap-2 rounded-2xl border px-4 py-3"
+        className="flex items-center gap-2 rounded-2xl border px-4 py-3"
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
@@ -60,7 +60,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           onClick={handleSend}
           disabled={disabled || !value.trim()}
           aria-label="Send"
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors disabled:opacity-30"
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-30"
           style={{
             backgroundColor: value.trim() ? "var(--accent-orange)" : "var(--border-color)",
           }}

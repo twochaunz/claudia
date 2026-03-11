@@ -134,7 +134,7 @@ export default function Home() {
               onClick={handleLandingSend}
               disabled={!landingValue.trim()}
               aria-label="Send"
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors disabled:opacity-30"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-30"
               style={{
                 backgroundColor: landingValue.trim() ? "var(--accent-orange)" : "var(--border-color)",
               }}
