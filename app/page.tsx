@@ -89,12 +89,6 @@ export default function Home() {
             isLanding
           />
 
-          <p
-            className="text-center text-[13px] mt-3"
-            style={{ color: "var(--text-secondary)" }}
-          >
-            Claudia and Consuela can make mistakes. Please double-check responses.
-          </p>
         </div>
       </div>
     );
@@ -122,6 +116,12 @@ export default function Home() {
         persona={persona}
         onPersonaChange={handlePersonaChange}
       />
+      <p
+        className="text-center text-[13px] pb-2"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Claudia and Consuela can make mistakes. Please double-check responses.
+      </p>
     </div>
   );
 }
