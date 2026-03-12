@@ -11,14 +11,14 @@ jest.mock("next/image", () => ({
 describe("Home (Chat Page)", () => {
   it("renders the initial empty state", () => {
     render(<Home />);
-    expect(screen.getByText("Claudia")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Claudia" })).toBeInTheDocument();
   });
 
   it("shows user message after sending", async () => {
     const user = userEvent.setup();
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How can I help you today?");
+    const textarea = screen.getByPlaceholderText("How are you doing today?");
     await user.type(textarea, "what is 2+2?");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
@@ -29,7 +29,7 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup();
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How can I help you today?");
+    const textarea = screen.getByPlaceholderText("How are you doing today?");
     await user.type(textarea, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
@@ -41,13 +41,18 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How can I help you today?");
+    const textarea = screen.getByPlaceholderText("How are you doing today?");
     await user.type(textarea, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     // Advance past max thinking time (capped at 12s)
     await act(async () => {
       jest.advanceTimersByTime(13000);
+    });
+
+    // Advance past typing animation (~1200ms for 2 words, add extra buffer)
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
     });
 
     expect(screen.getByText("si papi")).toBeInTheDocument();

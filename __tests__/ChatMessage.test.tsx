@@ -12,9 +12,9 @@ describe("ChatMessage", () => {
     expect(screen.getByText("si papi")).toBeInTheDocument();
   });
 
-  it("renders Claude logo for assistant messages", () => {
+  it("does not render a logo for assistant messages", () => {
     render(<ChatMessage role="assistant" content="si papi" />);
-    expect(screen.getByAltText("Assistant")).toBeInTheDocument();
+    expect(screen.queryByAltText("Assistant")).not.toBeInTheDocument();
   });
 
   it("does not render Claude logo for user messages", () => {
