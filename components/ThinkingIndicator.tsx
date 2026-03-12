@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { AnimatedLogo } from "./AnimatedLogo";
 
 interface ThinkingIndicatorProps {
   isVisible: boolean;
@@ -29,13 +29,7 @@ export function ThinkingIndicator({ isVisible, logoSrc = "/claude-logo.svg" }: T
   return (
     <div className="flex gap-3 mb-4 animate-fade-in">
       <div className="flex-shrink-0 w-7 h-7 mt-1">
-        <Image
-          src={logoSrc}
-          alt="Assistant"
-          width={28}
-          height={28}
-          className="rounded-full"
-        />
+        <AnimatedLogo logoSrc={logoSrc} phase="thinking" size={28} />
       </div>
       <div className="flex-1">
         <button

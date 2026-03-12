@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import Image from "next/image";
 import { MessageList } from "@/components/MessageList";
 import { ChatInput } from "@/components/ChatInput";
@@ -8,7 +8,6 @@ import { ChatInput } from "@/components/ChatInput";
 interface Message {
   role: "user" | "assistant";
   content: string;
-  logoSrc?: string;
 }
 
 type Persona = "claudia" | "consuela";
@@ -34,22 +33,38 @@ function getResponse(persona: Persona): string {
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [pendingResponse, setPendingResponse] = useState<string | null>(null);
   const [persona, setPersona] = useState<Persona>("claudia");
+
+  // Ref to avoid stale closure in handleTypingComplete
+  const pendingResponseRef = useRef<string | null>(null);
+  useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
 
   const handleSend = useCallback((text: string) => {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
 
-    const currentLogoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
     const baseDelay = 1500;
     const perChar = 30 * text.length;
     const jitter = Math.random() * 2000 - 1000;
     const delay = Math.min(baseDelay + perChar + jitter, 12000);
     setTimeout(() => {
       setIsThinking(false);
-      setMessages((prev) => [...prev, { role: "assistant", content: getResponse(persona), logoSrc: currentLogoSrc }]);
+      setIsTyping(true);
+      setPendingResponse(getResponse(persona));
     }, delay);
   }, [persona]);
+
+  // Stable callback identity — reads pendingResponse from ref, not closure
+  const handleTypingComplete = useCallback(() => {
+    const response = pendingResponseRef.current;
+    if (response !== null) {
+      setMessages((prev) => [...prev, { role: "assistant", content: response }]);
+    }
+    setIsTyping(false);
+    setPendingResponse(null);
+  }, []);
 
   const handlePersonaChange = (newPersona: Persona) => {
     setPersona(newPersona);
@@ -57,7 +72,7 @@ export default function Home() {
 
   const displayName = persona === "claudia" ? "Claudia" : "Consuela";
   const logoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
-  const hasMessages = messages.length > 0 || isThinking;
+  const hasMessages = messages.length > 0 || isThinking || isTyping;
 
   if (!hasMessages) {
     return (
@@ -83,7 +98,7 @@ export default function Home() {
 
           <ChatInput
             onSend={handleSend}
-            disabled={isThinking}
+            disabled={isThinking || isTyping}
             persona={persona}
             onPersonaChange={handlePersonaChange}
             isLanding
@@ -108,11 +123,18 @@ export default function Home() {
         </div>
       </header>
 
-      <MessageList messages={messages} isThinking={isThinking} logoSrc={logoSrc} />
+      <MessageList
+        messages={messages}
+        isThinking={isThinking}
+        isTyping={isTyping}
+        pendingResponse={pendingResponse}
+        logoSrc={logoSrc}
+        onTypingComplete={handleTypingComplete}
+      />
 
       <ChatInput
         onSend={handleSend}
-        disabled={isThinking}
+        disabled={isThinking || isTyping}
         persona={persona}
         onPersonaChange={handlePersonaChange}
       />
