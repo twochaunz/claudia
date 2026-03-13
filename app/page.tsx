@@ -33,7 +33,6 @@ function getResponse(persona: Persona): string {
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isThinking, setIsThinking] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [pendingResponse, setPendingResponse] = useState<string | null>(null);
   const [persona, setPersona] = useState<Persona>("claudia");
 
@@ -51,7 +50,6 @@ export default function Home() {
     const delay = Math.min(baseDelay + perChar + jitter, 12000);
     setTimeout(() => {
       setIsThinking(false);
-      setIsTyping(true);
       setPendingResponse(getResponse(persona));
     }, delay);
   }, [persona]);
@@ -62,7 +60,6 @@ export default function Home() {
     if (response !== null) {
       setMessages((prev) => [...prev, { role: "assistant", content: response }]);
     }
-    setIsTyping(false);
     setPendingResponse(null);
   }, []);
 
@@ -72,7 +69,7 @@ export default function Home() {
 
   const displayName = persona === "claudia" ? "Claudia" : "Consuela";
   const logoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
-  const hasMessages = messages.length > 0 || isThinking || isTyping;
+  const hasMessages = messages.length > 0 || isThinking || pendingResponse !== null;
 
   if (!hasMessages) {
     return (
@@ -98,7 +95,7 @@ export default function Home() {
 
           <ChatInput
             onSend={handleSend}
-            disabled={isThinking || isTyping}
+            disabled={isThinking || pendingResponse !== null}
             persona={persona}
             onPersonaChange={handlePersonaChange}
             isLanding
@@ -112,8 +109,8 @@ export default function Home() {
   return (
     <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
       <header
-        className="flex items-center justify-center px-4 py-3 border-b"
-        style={{ borderColor: "var(--border-color)", backgroundColor: "var(--bg-primary)" }}
+        className="flex items-center justify-center px-4 py-3 relative z-10"
+        style={{ backgroundColor: "var(--bg-primary)" }}
       >
         <div className="flex items-center gap-2">
           <img src={logoSrc} alt={displayName} width={24} height={24} />
@@ -126,7 +123,6 @@ export default function Home() {
       <MessageList
         messages={messages}
         isThinking={isThinking}
-        isTyping={isTyping}
         pendingResponse={pendingResponse}
         logoSrc={logoSrc}
         onTypingComplete={handleTypingComplete}
@@ -134,7 +130,7 @@ export default function Home() {
 
       <ChatInput
         onSend={handleSend}
-        disabled={isThinking || isTyping}
+        disabled={isThinking || pendingResponse !== null}
         persona={persona}
         onPersonaChange={handlePersonaChange}
       />
