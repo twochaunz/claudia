@@ -34,7 +34,9 @@ idle → scrolling → thinking → transitioning → typing → settled → idl
 | `typing` | Thinking text fade-out completes | Rotating | Response text fades in, words reveal |
 | `settled` | `onComplete` from TypedResponse | Stops rotating, eases to rest | Response text fully visible |
 
-On next user send, the settled logo disappears (the committed message in `messages[]` renders via ChatMessage without a logo), and the cycle restarts.
+| `idle` (from settled) | Next user sends a message | Instantly removed | Nothing — the committed message renders via ChatMessage without a logo |
+
+The `settled → idle` transition is instant (no fade-out) because the user's new message send naturally pushes the settled logo into the committed message history, where ChatMessage renders without logos. The sequencer then immediately advances to `scrolling` for the new cycle.
 
 ## Persistent Logo
 
@@ -65,36 +67,40 @@ As words appear during typing, the text grows and pushes the logo down naturally
 When `isThinking` becomes true:
 1. Logo appears immediately with morphing animation (GPU-accelerated SVG filter, no layout cost)
 2. `scrollIntoView({ behavior: "smooth", block: "start" })` fires on the latest user message anchor
-3. Listen for `scrollend` event on the scroll container, with a 500ms `setTimeout` fallback for Safari compatibility
+3. Listen for `scrollend` event on the scroll container, with a 1000ms `setTimeout` fallback (Safari lacks `scrollend` support, and smooth scrolls over long distances can exceed 500ms)
 4. Once scroll completes → advance to `thinking`, thinking content fades in
 
 This ensures nothing pops in while the viewport is still moving.
 
 ### Content Area (thinking → transitioning → typing)
 
-The thinking text and response text occupy the **same container**. Instead of conditional rendering (`{isThinking && <ThinkingIndicator />}`), both are always structurally present during a cycle, controlled by CSS opacity:
+The thinking text and response text occupy the **same container** using a stacked layout. Both layers are always in the DOM during an active cycle — the thinking content is positioned absolutely so it doesn't affect flow, while the response content occupies the normal flow position:
 
 ```
 <div className="relative">
-  {/* Thinking content — visible during thinking, fades out during transitioning */}
-  <div style={{ opacity: thinkingOpacity, transition: "opacity 200ms ease-out" }}>
+  {/* Thinking content — absolutely positioned, doesn't affect container height */}
+  <div
+    className="absolute inset-x-0 top-0"
+    style={{ opacity: thinkingOpacity, transition: "opacity 200ms ease-out" }}
+  >
     <ThinkingIndicator ... />
   </div>
 
-  {/* Response content — fades in during typing */}
-  {phase === "typing" || phase === "settled" ? (
-    <div style={{ opacity: responseOpacity, transition: "opacity 200ms ease-in" }}>
-      <TypedResponse ... />
-    </div>
-  ) : null}
+  {/* Response content — in normal flow, controls container height */}
+  <div style={{ opacity: responseOpacity, transition: "opacity 200ms ease-in" }}>
+    <TypedResponse ... />
+  </div>
 </div>
 ```
 
-The thinking → response crossover:
+During thinking, the container has minimal height (response content is empty/invisible). The ThinkingIndicator floats above via `position: absolute`. When the response arrives:
+
 1. `transitioning` phase: thinking content opacity `1 → 0` over 200ms
-2. On `transitionend` (or 200ms timeout fallback): advance to `typing`
-3. `typing` phase: thinking content unmounts (it's at opacity 0), response content mounts and fades `0 → 1` over 200ms
+2. On `transitionend` (with 250ms `setTimeout` fallback): advance to `typing`
+3. `typing` phase: TypedResponse is mounted and begins its word reveal interval. Response content fades `0 → 1` over 200ms. TypedResponse is only mounted when `phase === "typing" || phase === "settled"` — it does not exist during thinking/transitioning, so there's no invisible word accumulation. The absolutely-positioned thinking content remains at opacity 0 (no layout cost) until the cycle ends.
 4. Logo prop changes from `"thinking"` to `"typing"` — CSS class swap from morphing to rotating
+
+The thinking content uses `position: absolute` so its removal has zero layout impact. The response content uses normal flow so it naturally pushes the logo down as words appear. No height jumps during the crossover.
 
 Total crossover duration: ~400ms. The logo anchors the user's eye throughout.
 
@@ -121,16 +127,20 @@ When TypedResponse fires `onComplete`:
 - Remove logo rendering (the `<div className="flex-shrink-0 w-7 h-7 mt-1">` block with AnimatedLogo)
 - Component just renders the text content: thinking label, dots animation, timer, expandable panel
 - Remove `logoSrc` prop since it no longer renders a logo
+- Keep `isVisible` prop — when it goes false, the component resets its internal `elapsed` timer and `expanded` state as it does today. The parent controls visibility via opacity, but `isVisible` still governs the timer lifecycle.
+- Remove the `if (!isVisible) return null` early-return. The component must always render its DOM nodes (the parent handles visibility via opacity on a wrapper). `isVisible` only controls the timer interval start/stop and state resets — not conditional rendering.
 
 ### page.tsx — Minor Simplification
 
 - Remove `isTyping` state — MessageList manages this internally
 - Keep `isThinking`, `pendingResponse`, `handleTypingComplete`
 - `hasMessages` check simplifies to `messages.length > 0 || isThinking || pendingResponse !== null`
+- `ChatInput` disabled check becomes `disabled={isThinking || pendingResponse !== null}` — this covers all active phases since `pendingResponse` is non-null from the moment the response arrives until typing completes and the message is committed
+- Note: `setIsThinking(false)` and `setPendingResponse(...)` are called in the same `setTimeout` callback, so React 18 automatic batching ensures they update in a single render — no flash back to landing page.
 
-### AnimatedLogo.tsx — No Changes
+### AnimatedLogo.tsx — Minor Change
 
-Already accepts `phase` prop and handles all three animation styles. The only behavioral difference is it won't unmount between phases anymore.
+Already accepts `phase` prop and handles all three animation styles. The only behavioral difference is it won't unmount between phases anymore. One adjustment: keep the SVG `<defs>` filter block always rendered (not conditionally via `{showFilter && ...}`), and toggle the `filter` CSS property on/off instead. This avoids a visual flash when the filter DOM nodes are removed and re-added during phase transitions.
 
 ### TypedResponse.tsx — No Changes
 
@@ -140,15 +150,9 @@ Still reveals words progressively, fires `onComplete` when done.
 
 Past messages render without logos, as before.
 
-### globals.css — Minor Addition
+### globals.css — No Changes
 
-Add a utility class for the content area fade transitions:
-
-```css
-.phase-fade {
-  transition: opacity 200ms ease-out;
-}
-```
+Fade transitions are applied via inline styles on the content containers (transition duration is phase-dependent). No new CSS classes needed.
 
 ## Scroll Completion Detection
 
@@ -162,7 +166,7 @@ useEffect(() => {
   if (phase !== "scrolling" || !scrollContainerRef.current) return;
 
   const container = scrollContainerRef.current;
-  const fallbackTimer = setTimeout(handleScrollComplete, 500);
+  const fallbackTimer = setTimeout(handleScrollComplete, 1000);
 
   const onScrollEnd = () => {
     clearTimeout(fallbackTimer);
