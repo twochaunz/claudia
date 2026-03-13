@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { AnimatedLogo } from "./AnimatedLogo";
 
 interface ThinkingIndicatorProps {
   isVisible: boolean;
-  logoSrc?: string;
 }
 
-export function ThinkingIndicator({ isVisible, logoSrc = "/claude-logo.svg" }: ThinkingIndicatorProps) {
+export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
   const [elapsed, setElapsed] = useState(0);
   const [expanded, setExpanded] = useState(true);
 
@@ -24,13 +22,8 @@ export function ThinkingIndicator({ isVisible, logoSrc = "/claude-logo.svg" }: T
     return () => clearInterval(interval);
   }, [isVisible]);
 
-  if (!isVisible) return null;
-
   return (
-    <div className="flex gap-3 mb-4 animate-fade-in">
-      <div className="flex-shrink-0 w-7 h-7 mt-1">
-        <AnimatedLogo logoSrc={logoSrc} phase="thinking" size={28} />
-      </div>
+    <div className="mb-4">
       <div className="flex-1">
         <button
           onClick={() => setExpanded(!expanded)}
