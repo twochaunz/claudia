@@ -127,7 +127,7 @@ export function MessageList({
         {messages.map((msg, i) => (
           <div key={i}>
             {i === lastUserIndex && <div ref={latestUserRef} />}
-            <ChatMessage role={msg.role} content={msg.content} />
+            <ChatMessage role={msg.role} content={msg.content} logoSrc={logoSrc} />
           </div>
         ))}
 
