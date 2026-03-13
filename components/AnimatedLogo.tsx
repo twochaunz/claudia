@@ -121,7 +121,7 @@ export function AnimatedLogo({ logoSrc, phase, size = 28 }: AnimatedLogoProps) {
     .filter(Boolean)
     .join(" ");
 
-  const showFilter = phase === "thinking" && !reducedMotion;
+  const applyFilter = phase === "thinking" && !reducedMotion;
 
   return (
     <svg
@@ -132,35 +132,33 @@ export function AnimatedLogo({ logoSrc, phase, size = 28 }: AnimatedLogoProps) {
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      style={showFilter ? { filter: `url(#${filterId})` } : undefined}
+      style={applyFilter ? { filter: `url(#${filterId})` } : { filter: "" }}
       aria-hidden="true"
     >
-      {showFilter && (
-        <defs>
-          <filter
-            id={filterId}
-            filterUnits="userSpaceOnUse"
-            primitiveUnits="userSpaceOnUse"
-            x="-2"
-            y="-2"
-            width="28"
-            height="28"
-          >
-            <feTurbulence
-              ref={filterRef}
-              type="turbulence"
-              baseFrequency="0.03"
-              numOctaves={2}
-              result="turbulence"
-            />
-            <feDisplacementMap
-              in="SourceGraphic"
-              in2="turbulence"
-              scale={4}
-            />
-          </filter>
-        </defs>
-      )}
+      <defs>
+        <filter
+          id={filterId}
+          filterUnits="userSpaceOnUse"
+          primitiveUnits="userSpaceOnUse"
+          x="-2"
+          y="-2"
+          width="28"
+          height="28"
+        >
+          <feTurbulence
+            ref={filterRef}
+            type="turbulence"
+            baseFrequency="0.03"
+            numOctaves={2}
+            result="turbulence"
+          />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="turbulence"
+            scale={4}
+          />
+        </filter>
+      </defs>
       {getSvgContent(logoSrc)}
     </svg>
   );
