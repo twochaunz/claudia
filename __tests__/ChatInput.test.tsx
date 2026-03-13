@@ -63,4 +63,29 @@ describe("ChatInput", () => {
     render(<ChatInput {...defaultProps} persona="claudia" />);
     expect(screen.getByText("Claudia")).toBeInTheDocument();
   });
+
+  it("shows send button when textarea is empty (gray/disabled)", () => {
+    render(<ChatInput {...defaultProps} />);
+    const sendBtn = screen.getByRole("button", { name: /send/i });
+    expect(sendBtn).toBeInTheDocument();
+    expect(sendBtn).toBeDisabled();
+  });
+
+  it("shows send button with orange background when text is entered", async () => {
+    const user = userEvent.setup();
+    render(<ChatInput {...defaultProps} />);
+
+    const textarea = screen.getByPlaceholderText("Reply...");
+    await user.type(textarea, "hello");
+
+    const sendBtn = screen.getByRole("button", { name: /send/i });
+    expect(sendBtn).not.toBeDisabled();
+    expect(sendBtn).toHaveStyle({ backgroundColor: "var(--accent-orange)" });
+  });
+
+  it("does not render a voice button", () => {
+    render(<ChatInput {...defaultProps} />);
+    expect(screen.queryByRole("button", { name: /voice/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /listening/i })).not.toBeInTheDocument();
+  });
 });

@@ -86,15 +86,6 @@ html, body {
   border-radius: 3px;
 }
 
-@keyframes voice-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.15); }
-}
-
-.voice-pulse {
-  animation: voice-pulse 1.2s ease-in-out infinite;
-}
-
 @keyframes logo-rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -122,7 +113,6 @@ html, body {
 /* Accessibility: respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .logo-rotating,
-  .voice-pulse,
   .animate-fade-in,
   .word-reveal {
     animation: none !important;

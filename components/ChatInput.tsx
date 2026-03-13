@@ -2,7 +2,6 @@
 
 import { useState, useRef, KeyboardEvent } from "react";
 import { ModelSelector } from "./ModelSelector";
-import { VoiceButton } from "./VoiceButton";
 
 type Persona = "claudia" | "consuela";
 
@@ -44,10 +43,6 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
     }
   };
 
-  const handleVoiceTranscript = (text: string) => {
-    onSend(text);
-  };
-
   const hasText = value.trim().length > 0;
   const placeholder = isLanding ? "How are you doing today?" : "Reply...";
 
@@ -80,23 +75,21 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           <div />
           <div className="flex items-center gap-2">
             <ModelSelector persona={persona} onPersonaChange={onPersonaChange} />
-            {hasText ? (
-              <button
-                onClick={handleSend}
-                disabled={disabled || !hasText}
-                aria-label="Send"
-                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:opacity-30 cursor-pointer border-none"
-                style={{
-                  backgroundColor: "var(--accent-orange)",
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            ) : (
-              <VoiceButton onTranscript={handleVoiceTranscript} disabled={disabled} />
-            )}
+            <button
+              onClick={handleSend}
+              disabled={disabled || !hasText}
+              aria-label="Send"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer border-none"
+              style={{
+                backgroundColor: hasText ? "var(--accent-orange)" : "var(--text-secondary)",
+                opacity: hasText ? 1 : 0.4,
+                transition: "background-color 150ms ease, opacity 150ms ease",
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M8 14V2M8 2L3 7M8 2L13 7" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
