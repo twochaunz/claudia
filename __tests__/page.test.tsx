@@ -75,6 +75,14 @@ describe("Home (Chat Page)", () => {
       jest.advanceTimersByTime(3000);
     });
 
+    // Advance past settled → settling (500ms) + spacer fallback (450ms)
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(450);
+    });
+
     expect(screen.getByText("si papi")).toBeInTheDocument();
 
     jest.useRealTimers();
@@ -107,6 +115,10 @@ describe("Home (Chat Page)", () => {
 
     // Advance past typing animation (~1200ms for 2 words + buffer)
     await act(async () => { jest.advanceTimersByTime(3000); });
+
+    // Advance past settled → settling (500ms) + spacer fallback (450ms)
+    await act(async () => { jest.advanceTimersByTime(500); });
+    await act(async () => { jest.advanceTimersByTime(450); });
 
     // After cycle completes, input should be re-enabled
     expect(chatTextarea).not.toBeDisabled();
