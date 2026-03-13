@@ -11,7 +11,7 @@ interface Message {
   content: string;
 }
 
-type Phase = "idle" | "scrolling" | "thinking" | "transitioning" | "typing" | "settled";
+type Phase = "idle" | "scrolling" | "thinking" | "transitioning" | "typing" | "settled" | "settling";
 
 interface MessageListProps {
   messages: Message[];
@@ -31,6 +31,7 @@ export function MessageList({
   const [phase, setPhase] = useState<Phase>("idle");
   const latestUserRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
 
   // --- Phase sequencer: react to external prop changes ---
 
@@ -82,25 +83,78 @@ export function MessageList({
     return () => clearTimeout(timer);
   }, [phase]);
 
-  // settled → scrolling: when a new message cycle starts
+  // settled/settling → scrolling: when a new message cycle starts
+  // Commits the current response immediately (since handleTypingDone no longer calls onTypingComplete)
   useEffect(() => {
-    if (isThinking && phase === "settled") {
+    if (isThinking && (phase === "settled" || phase === "settling")) {
+      if (phase === "settling" && spacerRef.current) {
+        // Reset spacer inline styles before committing
+        spacerRef.current.style.height = "";
+        spacerRef.current.style.transition = "";
+      }
+      onTypingComplete(); // Always commit, whether settled or settling
       setPhase("scrolling");
     }
-  }, [isThinking, phase]);
+  }, [isThinking, phase, onTypingComplete]);
 
   // Edge case: props reset without completing cycle — return to idle
   useEffect(() => {
-    if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled") {
+    if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled" && phase !== "settling") {
       setPhase("idle");
     }
   }, [isThinking, pendingResponse, phase]);
 
+  // --- Settling phase ---
+
+  // settled → settling: after rotation ease-out (500ms)
+  useEffect(() => {
+    if (phase !== "settled") return;
+    const timer = setTimeout(() => setPhase("settling"), 500);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  // Handle settling complete: clear spacer styles, commit message, go idle
+  const handleSettlingComplete = useCallback(() => {
+    if (spacerRef.current) {
+      spacerRef.current.style.height = "";
+      spacerRef.current.style.transition = "";
+    }
+    onTypingComplete();
+    setPhase("idle");
+  }, [onTypingComplete]);
+
+  // settling: animate spacer height to 0
+  useEffect(() => {
+    if (phase !== "settling" || !spacerRef.current) return;
+
+    const spacer = spacerRef.current;
+    // Capture current height as concrete px value
+    spacer.style.height = `${spacer.offsetHeight}px`;
+
+    // Next frame: animate to 0
+    const raf = requestAnimationFrame(() => {
+      spacer.style.transition = "height 400ms ease-in";
+      spacer.style.height = "0px";
+    });
+
+    const fallback = setTimeout(handleSettlingComplete, 450);
+    const onEnd = () => {
+      clearTimeout(fallback);
+      handleSettlingComplete();
+    };
+    spacer.addEventListener("transitionend", onEnd, { once: true });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(fallback);
+      spacer.removeEventListener("transitionend", onEnd);
+    };
+  }, [phase, handleSettlingComplete]);
+
   // --- Typing complete handler ---
   const handleTypingDone = useCallback(() => {
     setPhase("settled");
-    onTypingComplete();
-  }, [onTypingComplete]);
+  }, []);
 
   // --- Derived state ---
   const lastUserIndex = messages.reduce(
@@ -111,8 +165,8 @@ export function MessageList({
   const isActive = phase !== "idle";
   const thinkingVisible = phase === "thinking";
   const thinkingOpacity = phase === "thinking" ? 1 : 0;
-  const responseOpacity = phase === "typing" || phase === "settled" ? 1 : 0;
-  const logoPhase = phase === "typing" ? "typing" : phase === "settled" ? "settled" : "thinking";
+  const responseOpacity = phase === "typing" || phase === "settled" || phase === "settling" ? 1 : 0;
+  const logoPhase = phase === "typing" ? "typing" : (phase === "settled" || phase === "settling") ? "settled" : "thinking";
 
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto chat-scroll relative">
@@ -146,7 +200,7 @@ export function MessageList({
               </div>
 
               {/* Response content — in normal flow, controls container height */}
-              {(phase === "typing" || phase === "settled") && pendingResponse !== null && (
+              {(phase === "typing" || phase === "settled" || phase === "settling") && pendingResponse !== null && (
                 <div style={{ opacity: responseOpacity, transition: "opacity 200ms ease-in", minHeight: "60px" }}>
                   <TypedResponse
                     text={pendingResponse}
@@ -156,7 +210,7 @@ export function MessageList({
               )}
 
               {/* Min-height during thinking so the absolute content has space */}
-              {phase !== "typing" && phase !== "settled" && (
+              {phase !== "typing" && phase !== "settled" && phase !== "settling" && (
                 <div style={{ minHeight: "60px" }} />
               )}
             </div>
@@ -169,7 +223,7 @@ export function MessageList({
         )}
 
         {/* Spacer — enough so the latest user message can scroll to top */}
-        <div className="h-[60dvh]" />
+        <div ref={spacerRef} className="h-[60dvh]" />
       </div>
     </div>
   );

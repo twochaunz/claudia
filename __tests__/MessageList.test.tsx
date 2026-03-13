@@ -113,4 +113,118 @@ describe("MessageList", () => {
     const logo = document.querySelector("svg[aria-hidden='true']");
     expect(logo).toBeInTheDocument();
   });
+
+  it("keeps response visible during settling phase", () => {
+    const { rerender } = render(
+      <MessageList {...defaultProps} isThinking={true} />
+    );
+
+    // scrolling → thinking
+    act(() => { jest.advanceTimersByTime(1000); });
+
+    // Response arrives → transitioning
+    rerender(
+      <MessageList
+        {...defaultProps}
+        isThinking={false}
+        pendingResponse="si papi"
+      />
+    );
+
+    // transitioning → typing
+    act(() => { jest.advanceTimersByTime(250); });
+
+    // Typing completes → settled
+    act(() => { jest.advanceTimersByTime(2000); });
+
+    // settled → settling (500ms for rotation ease-out)
+    act(() => { jest.advanceTimersByTime(500); });
+
+    // During settling, response text should still be visible
+    // TypedResponse uses aria-label for full text (individual words are in aria-hidden spans)
+    expect(screen.getByLabelText("si papi")).toBeInTheDocument();
+  });
+
+  it("calls onTypingComplete after settling animation", () => {
+    const onTypingComplete = jest.fn();
+    const { rerender } = render(
+      <MessageList {...defaultProps} isThinking={true} onTypingComplete={onTypingComplete} />
+    );
+
+    // scrolling → thinking
+    act(() => { jest.advanceTimersByTime(1000); });
+
+    // Response arrives → transitioning
+    rerender(
+      <MessageList
+        {...defaultProps}
+        isThinking={false}
+        pendingResponse="si papi"
+        onTypingComplete={onTypingComplete}
+      />
+    );
+
+    // transitioning → typing
+    act(() => { jest.advanceTimersByTime(250); });
+
+    // Typing completes → settled
+    act(() => { jest.advanceTimersByTime(2000); });
+
+    // Not yet called — still in settled/settling
+    expect(onTypingComplete).not.toHaveBeenCalled();
+
+    // settled → settling (500ms)
+    act(() => { jest.advanceTimersByTime(500); });
+
+    // spacer fallback (450ms) — separate act so jest processes the timer
+    // scheduled by the settling effect
+    act(() => { jest.advanceTimersByTime(450); });
+
+    // Now onTypingComplete should have been called
+    expect(onTypingComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it("commits response immediately when new message arrives during settling", () => {
+    const onTypingComplete = jest.fn();
+    const { rerender } = render(
+      <MessageList {...defaultProps} isThinking={true} onTypingComplete={onTypingComplete} />
+    );
+
+    // scrolling → thinking
+    act(() => { jest.advanceTimersByTime(1000); });
+
+    // Response arrives → transitioning
+    rerender(
+      <MessageList
+        {...defaultProps}
+        isThinking={false}
+        pendingResponse="si papi"
+        onTypingComplete={onTypingComplete}
+      />
+    );
+
+    // transitioning → typing
+    act(() => { jest.advanceTimersByTime(250); });
+
+    // Typing completes → settled
+    act(() => { jest.advanceTimersByTime(2000); });
+
+    // settled → settling
+    act(() => { jest.advanceTimersByTime(500); });
+
+    expect(onTypingComplete).not.toHaveBeenCalled();
+
+    // New message arrives during settling
+    rerender(
+      <MessageList
+        {...defaultProps}
+        isThinking={true}
+        pendingResponse="si papi"
+        onTypingComplete={onTypingComplete}
+      />
+    );
+
+    // onTypingComplete should be called immediately to commit the response
+    expect(onTypingComplete).toHaveBeenCalledTimes(1);
+  });
 });
