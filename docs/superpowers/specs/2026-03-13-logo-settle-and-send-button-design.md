@@ -46,35 +46,140 @@ Assistant messages in ChatMessage render a static AnimatedLogo (phase `"settled"
 
 ChatMessage needs a new `logoSrc` prop to know which logo to render. MessageList already has `logoSrc` and passes it through.
 
-### Logo Spacing During Active Phases
+### Logo Spacing
 
-Add `mb-6` to the logo container during active phases to give breathing room from the bottom of the viewport during thinking/typing.
+Both the active logo container (in MessageList) and the committed logo (in ChatMessage) use `mt-3` for spacing above the logo. This ensures the logo is in the same position during the settle-to-committed swap. The active logo container already has `mt-3` — no change needed. The spacer below (`h-[60dvh]`) provides the breathing room from the viewport bottom.
 
 ### Spacer Transition
 
-The `h-[60dvh]` spacer at the bottom of MessageList needs to transition its height during the `settling` phase:
+The `h-[60dvh]` spacer at the bottom of MessageList needs to animate its height to `0` during the `settling` phase. A CSS transition requires a concrete starting value — switching from a Tailwind class to an inline style in the same render won't animate because the browser sees no "from" value.
+
+Use a ref on the spacer element. When entering `settling`:
+1. Read the spacer's current `offsetHeight` in px
+2. Set it as an explicit inline `style.height` (e.g., `"384px"`)
+3. In a `requestAnimationFrame` callback, set `style.height = "0px"` and `style.transition = "height 400ms ease-in"`
+4. Listen for `transitionend` on the spacer (with 450ms `setTimeout` fallback)
 
 ```tsx
-<div
-  className={phase === "settling" ? "" : "h-[60dvh]"}
-  style={phase === "settling" ? {
-    height: 0,
-    transition: "height 400ms ease-in",
-  } : undefined}
-/>
+const spacerRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  if (phase !== "settling" || !spacerRef.current) return;
+
+  const spacer = spacerRef.current;
+  // Capture current height as concrete px value
+  spacer.style.height = `${spacer.offsetHeight}px`;
+
+  // Next frame: animate to 0
+  const raf = requestAnimationFrame(() => {
+    spacer.style.transition = "height 400ms ease-in";
+    spacer.style.height = "0px";
+  });
+
+  const fallback = setTimeout(handleSettlingComplete, 450);
+  const onEnd = () => {
+    clearTimeout(fallback);
+    handleSettlingComplete();
+  };
+  spacer.addEventListener("transitionend", onEnd, { once: true });
+
+  return () => {
+    cancelAnimationFrame(raf);
+    clearTimeout(fallback);
+    spacer.removeEventListener("transitionend", onEnd);
+  };
+}, [phase, handleSettlingComplete]);
 ```
 
-The spacer starts at `60dvh` during all active phases. When phase enters `settling`, it switches to `height: 0` with the CSS transition, causing the smooth slide-up.
+The spacer element always uses the `h-[60dvh]` class. During `settling`, the inline styles override the class-based height and animate it to zero. When settling completes, `handleSettlingComplete` clears the inline styles so the class takes effect again on the next cycle.
+
+### `handleSettlingComplete` Function
+
+```tsx
+const handleSettlingComplete = useCallback(() => {
+  // Reset spacer inline styles so h-[60dvh] class takes effect on next cycle
+  if (spacerRef.current) {
+    spacerRef.current.style.height = "";
+    spacerRef.current.style.transition = "";
+  }
+  onTypingComplete();
+  setPhase("idle");
+}, [onTypingComplete]);
+```
+
+This function is called when the spacer transition finishes (or by the 450ms fallback). It clears the inline styles so the spacer reverts to its `h-[60dvh]` class on the next message cycle, then commits the message and resets to idle.
+
+### Spacer JSX
+
+The spacer element needs a ref. It stays outside the `isActive` conditional (always rendered):
+
+```tsx
+{/* Spacer — enough so the latest user message can scroll to top */}
+<div ref={spacerRef} className="h-[60dvh]" />
+```
 
 ### MessageList Changes
 
 - Add `settling` to the `Phase` type
+- Add `spacerRef` ref for the spacer element
+- Add `handleSettlingComplete` callback (defined above)
 - Add effect: `settled` → `settling` after 500ms (waiting for rotation ease-out)
-- Add effect: `settling` spacer `transitionend` → call `onTypingComplete()`, set phase `idle`
-- Move `onTypingComplete()` call from `handleTypingDone` to the settling-complete handler
+- Add effect: `settling` spacer transition (using ref + rAF approach above), calls `handleSettlingComplete` on completion
+- Move `onTypingComplete()` call from `handleTypingDone` to `handleSettlingComplete`
 - `handleTypingDone` now only sets phase to `settled` (no longer calls `onTypingComplete`)
-- Add `mb-6` to the logo container div
+- Add `mt-3` to the logo container div (matching ChatMessage's `mt-3` for seamless transition)
 - Keep `isActive` check as `phase !== "idle"` — `settling` is still active
+
+### Derived State Updates for `settling`
+
+All derived state expressions that switch on `phase` must include `settling`. During `settling`, the response text and logo must remain visible and unchanged:
+
+```tsx
+const isActive = phase !== "idle";  // settling is active — no change needed
+const thinkingVisible = phase === "thinking";  // no change needed
+const thinkingOpacity = phase === "thinking" ? 1 : 0;  // no change needed
+const responseOpacity = phase === "typing" || phase === "settled" || phase === "settling" ? 1 : 0;  // ADD settling
+const logoPhase = phase === "typing" ? "typing" : (phase === "settled" || phase === "settling") ? "settled" : "thinking";  // ADD settling
+```
+
+The response rendering condition must also include `settling`:
+
+```tsx
+{(phase === "typing" || phase === "settled" || phase === "settling") && pendingResponse !== null && (
+  <div style={{ opacity: responseOpacity, transition: "opacity 200ms ease-in", minHeight: "60px" }}>
+    <TypedResponse text={pendingResponse} onComplete={handleTypingDone} />
+  </div>
+)}
+```
+
+### Edge Case: Props Reset Guard
+
+The existing edge-case reset effect must exclude `settling` from being snapped to `idle`:
+
+```tsx
+useEffect(() => {
+  if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled" && phase !== "settling") {
+    setPhase("idle");
+  }
+}, [isThinking, pendingResponse, phase]);
+```
+
+### Edge Case: New Message During `settling`
+
+If `isThinking` becomes true during the `settling` phase (user sends a new message before the spacer animation finishes), cancel the settling animation, immediately call `onTypingComplete()`, and advance to `scrolling`:
+
+```tsx
+useEffect(() => {
+  if (isThinking && (phase === "settled" || phase === "settling")) {
+    if (phase === "settling") {
+      onTypingComplete();  // commit current message immediately
+    }
+    setPhase("scrolling");
+  }
+}, [isThinking, phase, onTypingComplete]);
+```
+
+This effect replaces the existing `settled → scrolling` effect (lines 85-90 of current MessageList.tsx). Do not keep both — this one covers both `settled` and `settling`.
 
 ### AnimatedLogo Changes
 
@@ -128,7 +233,9 @@ The `transition` property provides a smooth 150ms crossfade between states.
 
 ## Affected Tests
 
-- MessageList tests: add `settling` phase assertions, verify spacer transition
-- ChatMessage tests: verify logo renders for assistant messages
-- ChatInput tests: verify send button always visible, no voice button
-- page.tsx tests: timing changes (extra 500ms settle + 400ms spacer transition before `onTypingComplete`)
+Tests exist in `__tests__/` directory:
+
+- `__tests__/MessageList.test.tsx`: add `settling` phase assertions, verify spacer transition, verify response stays visible during settling
+- `__tests__/page.test.tsx`: timing changes (extra 500ms settle + 450ms spacer fallback before `onTypingComplete`)
+- New or updated ChatMessage tests: verify logo renders for assistant messages
+- New or updated ChatInput tests: verify send button always visible, gray when empty, orange with text, no voice button
