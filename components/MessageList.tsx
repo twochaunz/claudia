@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { TypedResponse } from "./TypedResponse";
@@ -18,6 +18,7 @@ interface MessageListProps {
   isThinking: boolean;
   pendingResponse: string | null;
   logoSrc?: string;
+  displayName?: string;
   onTypingComplete: () => void;
 }
 
@@ -26,12 +27,59 @@ export function MessageList({
   isThinking,
   pendingResponse,
   logoSrc = "/claude-logo.svg",
+  displayName = "Claudia",
   onTypingComplete,
 }: MessageListProps) {
   const [phase, setPhase] = useState<Phase>("idle");
+  const [debugInfo, setDebugInfo] = useState("");
   const latestUserRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const spacerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const activeAreaRef = useRef<HTMLDivElement>(null);
+  const wasSettlingRef = useRef(false);
+
+  // --- Debug instrumentation ---
+  const measure = useCallback(() => {
+    const c = scrollContainerRef.current;
+    const h = headerRef.current;
+    const u = latestUserRef.current;
+    const a = activeAreaRef.current;
+    return {
+      scrollTop: c?.scrollTop ?? 0,
+      scrollH: c?.scrollHeight ?? 0,
+      clientH: c?.clientHeight ?? 0,
+      headerH: h?.offsetHeight ?? 0,
+      scrollPadding: c?.style.scrollPaddingTop ?? "unset",
+      userMsgTop: u ? Math.round(u.getBoundingClientRect().top) : null,
+      activeH: a?.offsetHeight ?? 0,
+      maxScroll: c ? c.scrollHeight - c.clientHeight : 0,
+    };
+  }, []);
+
+  // Log every phase transition
+  useEffect(() => {
+    const m = measure();
+    const line = `[${phase}] sT=${m.scrollTop.toFixed(1)} sH=${m.scrollH} cH=${m.clientH} maxS=${m.maxScroll} hdrH=${m.headerH} sPad=${m.scrollPadding} userTop=${m.userMsgTop} activeH=${m.activeH}`;
+    console.log(line);
+    setDebugInfo(line);
+  }, [phase, measure]);
+
+  // Log scroll events
+  useEffect(() => {
+    const c = scrollContainerRef.current;
+    if (!c) return;
+    let last = c.scrollTop;
+    const onScroll = () => {
+      const delta = c.scrollTop - last;
+      if (Math.abs(delta) > 0.5) {
+        const m = measure();
+        console.log(`[SCROLL] Δ=${delta.toFixed(1)} now=${c.scrollTop.toFixed(1)} sH=${m.scrollH} cH=${m.clientH} userTop=${m.userMsgTop}`);
+      }
+      last = c.scrollTop;
+    };
+    c.addEventListener("scroll", onScroll, { passive: true });
+    return () => c.removeEventListener("scroll", onScroll);
+  }, [measure]);
 
   // --- Phase sequencer: react to external prop changes ---
 
@@ -84,15 +132,9 @@ export function MessageList({
   }, [phase]);
 
   // settled/settling → scrolling: when a new message cycle starts
-  // Commits the current response immediately (since handleTypingDone no longer calls onTypingComplete)
   useEffect(() => {
     if (isThinking && (phase === "settled" || phase === "settling")) {
-      if (phase === "settling" && spacerRef.current) {
-        // Reset spacer inline styles before committing
-        spacerRef.current.style.height = "";
-        spacerRef.current.style.transition = "";
-      }
-      onTypingComplete(); // Always commit, whether settled or settling
+      onTypingComplete();
       setPhase("scrolling");
     }
   }, [isThinking, phase, onTypingComplete]);
@@ -113,43 +155,38 @@ export function MessageList({
     return () => clearTimeout(timer);
   }, [phase]);
 
-  // Handle settling complete: clear spacer styles, commit message, go idle
-  const handleSettlingComplete = useCallback(() => {
-    if (spacerRef.current) {
-      spacerRef.current.style.height = "";
-      spacerRef.current.style.transition = "";
-    }
+  // settling: commit message and go idle.
+  // useLayoutEffect so React flushes the state updates synchronously
+  // before the browser paints (no intermediate frame).
+  useLayoutEffect(() => {
+    if (phase !== "settling") return;
+    const pre = measure();
+    console.log(`[SETTLE-PRE] sT=${pre.scrollTop.toFixed(1)} sH=${pre.scrollH} cH=${pre.clientH} userTop=${pre.userMsgTop} activeH=${pre.activeH}`);
+    wasSettlingRef.current = true;
     onTypingComplete();
     setPhase("idle");
-  }, [onTypingComplete]);
+  }, [phase, onTypingComplete, measure]);
 
-  // settling: animate spacer height to 0
+  // After settling→idle DOM commit: re-anchor the latest user message
+  // to the top of the viewport before the browser paints.
+  useLayoutEffect(() => {
+    if (!wasSettlingRef.current || phase !== "idle") return;
+    const pre = measure();
+    console.log(`[SETTLE-POST-BEFORE-SCROLL] sT=${pre.scrollTop.toFixed(1)} sH=${pre.scrollH} cH=${pre.clientH} userTop=${pre.userMsgTop} activeH=${pre.activeH}`);
+    wasSettlingRef.current = false;
+    latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    const post = measure();
+    console.log(`[SETTLE-POST-AFTER-SCROLL] sT=${post.scrollTop.toFixed(1)} sH=${post.scrollH} cH=${post.clientH} userTop=${post.userMsgTop}`);
+  }, [phase, measure]);
+
+  // --- Sync scroll-padding-top with actual header height ---
   useEffect(() => {
-    if (phase !== "settling" || !spacerRef.current) return;
-
-    const spacer = spacerRef.current;
-    // Capture current height as concrete px value
-    spacer.style.height = `${spacer.offsetHeight}px`;
-
-    // Next frame: animate to 0
-    const raf = requestAnimationFrame(() => {
-      spacer.style.transition = "height 400ms ease-in";
-      spacer.style.height = "0px";
-    });
-
-    const fallback = setTimeout(handleSettlingComplete, 450);
-    const onEnd = () => {
-      clearTimeout(fallback);
-      handleSettlingComplete();
-    };
-    spacer.addEventListener("transitionend", onEnd, { once: true });
-
-    return () => {
-      cancelAnimationFrame(raf);
-      clearTimeout(fallback);
-      spacer.removeEventListener("transitionend", onEnd);
-    };
-  }, [phase, handleSettlingComplete]);
+    const container = scrollContainerRef.current;
+    const header = headerRef.current;
+    if (container && header) {
+      container.style.scrollPaddingTop = `${header.offsetHeight}px`;
+    }
+  }, []);
 
   // --- Typing complete handler ---
   const handleTypingDone = useCallback(() => {
@@ -170,14 +207,22 @@ export function MessageList({
 
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto chat-scroll relative">
-      {/* Gradient fade at top */}
+      {/* Sticky header with gradient — content scrolls behind it and fades */}
       <div
-        className="sticky top-0 left-0 right-0 h-12 z-10 pointer-events-none"
+        ref={headerRef}
+        className="sticky top-0 z-20 flex items-center justify-center px-4 pt-3 pb-5"
         style={{
-          background: "linear-gradient(to bottom, var(--bg-primary) 0%, transparent 100%)",
+          background: "linear-gradient(to bottom, var(--bg-primary) 55%, transparent 100%)",
         }}
-      />
-      <div className="max-w-3xl mx-auto px-4 pb-6 -mt-6">
+      >
+        <div className="flex items-center gap-2">
+          <img src={logoSrc} alt={displayName} width={24} height={24} />
+          <span className="text-[24px] font-normal" style={{ color: "var(--text-primary)" }}>
+            {displayName}
+          </span>
+        </div>
+      </div>
+      <div className="max-w-3xl mx-auto px-4 pb-6">
         {messages.map((msg, i) => (
           <div key={i}>
             {i === lastUserIndex && <div ref={latestUserRef} />}
@@ -185,45 +230,63 @@ export function MessageList({
           </div>
         ))}
 
-        {/* Active response area */}
+        {/* Active response area — matches ChatMessage assistant layout (mb-4, mt-3 logo) */}
         {isActive && (
-          <div>
-            {/* Content area: stacked thinking + response */}
-            <div className="relative">
-              {/* Thinking content — absolutely positioned, no layout impact */}
+          <div ref={activeAreaRef} className="mb-4">
+            {/* Content area: CSS Grid overlay — both layers share one cell.
+                The taller content determines the cell height, so no layout
+                shift when cross-fading between thinking and response. */}
+            <div style={{ display: "grid" }}>
+              {/* Thinking content — same grid cell, contributes to height */}
               <div
                 data-testid="thinking-wrapper"
-                className="absolute inset-x-0 top-0"
-                style={{ opacity: thinkingOpacity, transition: "opacity 200ms ease-out" }}
+                style={{ gridArea: "1/1", opacity: thinkingOpacity, transition: "opacity 200ms ease-out" }}
               >
                 <ThinkingIndicator isVisible={thinkingVisible} />
               </div>
 
-              {/* Response content — in normal flow, controls container height */}
-              {(phase === "typing" || phase === "settled" || phase === "settling") && pendingResponse !== null && (
-                <div style={{ opacity: responseOpacity, transition: "opacity 200ms ease-in", minHeight: "60px" }}>
+              {/* Response content — same grid cell, overlaps thinking */}
+              <div style={{ gridArea: "1/1", opacity: responseOpacity, transition: "opacity 200ms ease-in", minHeight: "60px" }}>
+                {pendingResponse !== null && (
                   <TypedResponse
                     text={pendingResponse}
                     onComplete={handleTypingDone}
                   />
-                </div>
-              )}
-
-              {/* Min-height during thinking so the absolute content has space */}
-              {phase !== "typing" && phase !== "settled" && phase !== "settling" && (
-                <div style={{ minHeight: "60px" }} />
-              )}
+                )}
+              </div>
             </div>
 
-            {/* Persistent logo */}
+            {/* Persistent logo — mt-3 matches ChatMessage assistant layout */}
             <div className="flex justify-start mt-3">
               <AnimatedLogo logoSrc={logoSrc} phase={logoPhase} size={28} />
             </div>
           </div>
         )}
 
-        {/* Spacer — enough so the latest user message can scroll to top */}
-        <div ref={spacerRef} className="h-[60dvh]" />
+        {/* Spacer — enough so the latest user message stays at top even after
+            the active area (129px) is replaced by the shorter committed ChatMessage (~65px).
+            80dvh provides ≥80px buffer on small viewports, absorbing the ~64px height drop. */}
+        <div className="h-[80dvh]" />
+      </div>
+      {/* Debug overlay — remove after fixing */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 80,
+          right: 8,
+          backgroundColor: "rgba(0,0,0,0.85)",
+          color: "#0f0",
+          fontFamily: "monospace",
+          fontSize: "11px",
+          padding: "6px 10px",
+          borderRadius: 6,
+          zIndex: 9999,
+          maxWidth: 420,
+          wordBreak: "break-all",
+          pointerEvents: "none",
+        }}
+      >
+        {debugInfo}
       </div>
     </div>
   );

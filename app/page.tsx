@@ -108,23 +108,12 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
-      <header
-        className="flex items-center justify-center px-4 py-3 relative z-10"
-        style={{ backgroundColor: "var(--bg-primary)" }}
-      >
-        <div className="flex items-center gap-2">
-          <img src={logoSrc} alt={displayName} width={24} height={24} />
-          <span className="text-[24px] font-normal" style={{ color: "var(--text-primary)" }}>
-            {displayName}
-          </span>
-        </div>
-      </header>
-
       <MessageList
         messages={messages}
         isThinking={isThinking}
         pendingResponse={pendingResponse}
         logoSrc={logoSrc}
+        displayName={displayName}
         onTypingComplete={handleTypingComplete}
       />
 
