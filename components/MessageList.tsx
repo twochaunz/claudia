@@ -21,6 +21,7 @@ interface MessageListProps {
   logoSrc?: string;
   displayName?: string;
   onTypingComplete: () => void;
+  onReset?: () => void;
 }
 
 export function MessageList({
@@ -30,6 +31,7 @@ export function MessageList({
   logoSrc = "/claude-logo.svg",
   displayName = "Claudia",
   onTypingComplete,
+  onReset,
 }: MessageListProps) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [debugInfo, setDebugInfo] = useState("");
@@ -37,6 +39,7 @@ export function MessageList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
   const thinkingContentRef = useRef<HTMLDivElement>(null);
   const wasSettlingRef = useRef(false);
   const [thinkingH, setThinkingH] = useState(0);
@@ -96,6 +99,9 @@ export function MessageList({
   // scrolling: trigger scroll and wait for completion
   useEffect(() => {
     if (phase !== "scrolling") return;
+
+    // Reset spacer to full height so scrollIntoView can push content to top
+    if (spacerRef.current) spacerRef.current.style.height = "";
 
     // Scroll the latest user message to top
     if (latestUserRef.current) {
@@ -171,7 +177,7 @@ export function MessageList({
   }, [phase, onTypingComplete, measure]);
 
   // After settling→idle DOM commit: re-anchor the latest user message
-  // to the top of the viewport before the browser paints.
+  // to the top of the viewport before the browser paints, then trim spacer.
   useLayoutEffect(() => {
     if (!wasSettlingRef.current || phase !== "idle") return;
     const pre = measure();
@@ -180,6 +186,16 @@ export function MessageList({
     latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
     const post = measure();
     console.log(`[SETTLE-POST-AFTER-SCROLL] sT=${post.scrollTop.toFixed(1)} sH=${post.scrollH} cH=${post.clientH} userTop=${post.userMsgTop}`);
+
+    // Trim spacer via direct DOM manipulation (no state → no re-render → no shift)
+    const c = scrollContainerRef.current;
+    if (c && spacerRef.current) {
+      const excess = c.scrollHeight - c.clientHeight - c.scrollTop;
+      if (excess > 0) {
+        const currentH = spacerRef.current.getBoundingClientRect().height;
+        spacerRef.current.style.height = `${Math.max(0, currentH - excess)}px`;
+      }
+    }
   }, [phase, measure]);
 
   // --- Sync scroll-padding-top with actual header height ---
@@ -219,7 +235,7 @@ export function MessageList({
   const holdThinkingSpace = phase === "scrolling" || phase === "thinking" || phase === "transitioning";
 
   return (
-    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto chat-scroll relative">
+    <div ref={scrollContainerRef} className="flex-1 overflow-y-scroll chat-scroll relative">
       {/* Sticky header with gradient — content scrolls behind it and fades */}
       <div
         ref={headerRef}
@@ -228,8 +244,8 @@ export function MessageList({
           background: "linear-gradient(to bottom, var(--bg-primary) 55%, transparent 100%)",
         }}
       >
-        <div className="flex items-center gap-2">
-          <img src={logoSrc} alt={displayName} width={24} height={24} />
+        <div className="flex items-center gap-2 cursor-pointer" onClick={onReset}>
+          <AnimatedLogo logoSrc={logoSrc} phase="settled" size={logoSrc.includes("consuela") ? 26 : 32} />
           <span className="text-[24px] font-normal" style={{ color: "var(--text-primary)" }}>
             {displayName}
           </span>
@@ -293,7 +309,7 @@ export function MessageList({
         {/* Spacer — enough so the latest user message stays at top even after
             the active area (129px) is replaced by the shorter committed ChatMessage (~65px).
             80dvh provides ≥80px buffer on small viewports, absorbing the ~64px height drop. */}
-        <div className="h-[80dvh]" />
+        <div ref={spacerRef} className="h-[80dvh]" />
       </div>
       {/* Debug overlay — remove after fixing */}
       <div

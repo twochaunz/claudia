@@ -29,7 +29,7 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-[13px] font-medium px-2 py-1 rounded-lg transition-colors cursor-pointer bg-transparent border-none"
+        className="flex items-center gap-1 text-[14px] font-medium px-2 py-1 rounded-lg transition-colors cursor-pointer bg-transparent border-none"
         style={{ color: "var(--text-secondary)" }}
       >
         {displayName}
@@ -60,12 +60,12 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
         >
           <button
             onClick={() => { onPersonaChange("claudia"); setOpen(false); }}
-            className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-left bg-transparent border-none cursor-pointer transition-colors hover:opacity-80"
+            className="w-full flex items-center justify-between px-4 py-3 text-[15px] text-left bg-transparent border-none cursor-pointer transition-colors hover:opacity-80"
             style={{ color: "var(--text-primary)" }}
           >
             <div>
               <div className="font-medium">Claudia</div>
-              <div className="text-[12px]" style={{ color: "var(--text-secondary)" }}>
+              <div className="text-[13px]" style={{ color: "var(--text-secondary)" }}>
                 Most agreeable for everyday tasks
               </div>
             </div>
@@ -77,12 +77,12 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
           </button>
           <button
             onClick={() => { onPersonaChange("consuela"); setOpen(false); }}
-            className="w-full flex items-center justify-between px-4 py-3 text-[14px] text-left bg-transparent border-none cursor-pointer transition-colors hover:opacity-80"
+            className="w-full flex items-center justify-between px-4 py-3 text-[15px] text-left bg-transparent border-none cursor-pointer transition-colors hover:opacity-80"
             style={{ color: "var(--text-primary)" }}
           >
             <div>
               <div className="font-medium">Consuela</div>
-              <div className="text-[12px]" style={{ color: "var(--text-secondary)" }}>
+              <div className="text-[13px]" style={{ color: "var(--text-secondary)" }}>
                 Think longer for complex tasks
               </div>
             </div>

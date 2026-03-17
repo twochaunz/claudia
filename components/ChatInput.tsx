@@ -61,7 +61,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             disabled={disabled}
             placeholder={placeholder}
             rows={4}
-            className="w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+            className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
             style={{
               color: "var(--text-primary)",
               minHeight: "100px",
@@ -76,7 +76,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             onKeyDown={handleKeyDown}
             disabled={disabled}
             placeholder={placeholder}
-            className="w-full bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+            className="w-full bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
             style={{ color: "var(--text-primary)" }}
           />
         )}

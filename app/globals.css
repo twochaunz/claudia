@@ -132,6 +132,22 @@ html, body {
   animation: lash-sporadic-blink 8s ease-in-out infinite;
 }
 
+@keyframes lash-wink {
+  0%    { transform: scaleY(1); }
+  12.5% { transform: scaleY(0.05); }
+  25%   { transform: scaleY(1); }
+  50%   { transform: scaleY(1); }
+  62.5% { transform: scaleY(0.05); }
+  75%   { transform: scaleY(1); }
+  87.5% { transform: scaleY(0.05); }
+  100%  { transform: scaleY(1); }
+}
+
+.claudia-wink {
+  transform-origin: 12px 17.5px;
+  animation: lash-wink 1.2s ease-in-out 1;
+}
+
 @keyframes consuela-body-think {
   0%     { transform: scale(1); }
   16.6%  { transform: scale(1.017); }
@@ -144,11 +160,11 @@ html, body {
 
 @keyframes consuela-glasses-think {
   0%     { transform: rotate(0deg); }
-  16.6%  { transform: rotate(4.5deg); }
-  33.3%  { transform: rotate(-3deg); }
-  50%    { transform: rotate(5deg); }
-  66.6%  { transform: rotate(-4deg); }
-  83.3%  { transform: rotate(2deg); }
+  16.6%  { transform: rotate(8deg); }
+  33.3%  { transform: rotate(-6deg); }
+  50%    { transform: rotate(9deg); }
+  66.6%  { transform: rotate(-7deg); }
+  83.3%  { transform: rotate(4deg); }
   100%   { transform: rotate(0deg); }
 }
 
@@ -183,6 +199,7 @@ html, body {
   .animate-fade-in,
   .word-reveal,
   .claudia-thinking,
+  .claudia-wink,
   .consuela-body-thinking,
   .consuela-glasses-thinking {
     animation: none !important;

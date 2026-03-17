@@ -27,7 +27,7 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
       <div className="flex-1">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 text-[13px] font-medium cursor-pointer bg-transparent border-none p-0"
+          className="flex items-center gap-2 text-[14px] font-medium cursor-pointer bg-transparent border-none p-0"
           style={{ color: "var(--accent-orange)" }}
         >
           <svg
@@ -57,7 +57,7 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
         </button>
         {expanded && (
           <div
-            className="mt-2 rounded-xl px-4 py-3 text-[13px] leading-relaxed border-l-2"
+            className="mt-2 rounded-xl px-4 py-3 text-[14px] leading-relaxed border-l-2"
             style={{
               backgroundColor: "var(--thinking-bg)",
               borderLeftColor: "var(--accent-orange)",

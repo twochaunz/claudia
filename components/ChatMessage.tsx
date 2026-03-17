@@ -11,7 +11,7 @@ export function ChatMessage({ role, content, logoSrc = "/claude-logo.svg" }: Cha
     return (
       <div className="flex justify-end mb-4 animate-fade-in">
         <div
-          className="max-w-[85%] rounded-3xl px-5 py-3 text-[15px] leading-relaxed"
+          className="max-w-[85%] rounded-3xl px-5 py-3 text-[16px] leading-relaxed"
           style={{ backgroundColor: "var(--bg-user-bubble)", color: "var(--text-primary)" }}
         >
           {content}
@@ -23,7 +23,7 @@ export function ChatMessage({ role, content, logoSrc = "/claude-logo.svg" }: Cha
   return (
     <div className="mb-4">
       <div
-        className="text-[15px] leading-relaxed"
+        className="text-[16px] leading-relaxed"
         style={{ color: "var(--text-primary)" }}
       >
         {content}

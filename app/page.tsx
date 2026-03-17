@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import Image from "next/image";
 import { MessageList } from "@/components/MessageList";
 import { ChatInput } from "@/components/ChatInput";
+import { AnimatedLogo } from "@/components/AnimatedLogo";
 
 interface Message {
   role: "user" | "assistant";
@@ -47,10 +47,8 @@ export default function Home() {
     setIsThinking(true);
     pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
 
-    const baseDelay = 1500;
-    const perChar = 30 * text.length;
-    const jitter = Math.random() * 2000 - 1000;
-    const delay = Math.min(baseDelay + perChar + jitter, 12000);
+    // Left-skewed distribution: 2s–5s, favoring shorter delays
+    const delay = 2000 + Math.pow(Math.random(), 2) * 3000;
     setTimeout(() => {
       setIsThinking(false);
       setPendingResponse(getResponse(persona));
@@ -70,6 +68,12 @@ export default function Home() {
     setPersona(newPersona);
   };
 
+  const handleReset = useCallback(() => {
+    setMessages([]);
+    setIsThinking(false);
+    setPendingResponse(null);
+  }, []);
+
   const displayName = persona === "claudia" ? "Claudia" : "Consuela";
   const logoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
   const hasMessages = messages.length > 0 || isThinking || pendingResponse !== null;
@@ -82,14 +86,9 @@ export default function Home() {
       >
         <div className="w-full max-w-3xl px-4">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <Image
-              src={logoSrc}
-              alt={displayName}
-              width={32}
-              height={32}
-            />
+            <AnimatedLogo logoSrc={logoSrc} phase="settled" size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
             <h1
-              className="text-[32px] font-normal"
+              className="text-[40px] font-normal"
               style={{ color: "var(--text-primary)" }}
             >
               {displayName}
@@ -118,6 +117,7 @@ export default function Home() {
         logoSrc={logoSrc}
         displayName={displayName}
         onTypingComplete={handleTypingComplete}
+        onReset={handleReset}
       />
 
       <ChatInput

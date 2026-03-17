@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 
 type AnimationPhase = "thinking" | "typing" | "settled";
 
@@ -8,6 +8,7 @@ interface AnimatedLogoProps {
   logoSrc: string;
   phase: AnimationPhase;
   size?: number;
+  onClick?: () => void;
 }
 
 // Claudia hand-drawn eyelash SVG (6 lashes, no eye)
@@ -87,31 +88,34 @@ function ConsuelaSvg({
         </g>
       </g>
       <g className={glassesClass}>
-        <path
-          d="M9.85 9.15 C11.55 8.55 13.75 8.55 15.35 9.15 C16.45 10.75 16.45 13.45 15.35 14.95 C13.75 15.55 11.55 15.55 9.85 14.95 C8.85 13.45 8.85 10.75 9.85 9.15Z"
-          fill="none"
-          stroke="#F5F5F0"
-          strokeWidth="0.8"
-        />
-        <path
-          d="M17.35 8.95 C19.05 8.35 21.25 8.35 22.85 8.95 C23.95 10.55 23.95 13.25 22.85 14.75 C21.25 15.35 19.05 15.35 17.35 14.75 C16.35 13.25 16.35 10.55 17.35 8.95Z"
-          fill="none"
-          stroke="#F5F5F0"
-          strokeWidth="0.8"
-        />
-        <path
-          d="M15.35 12.15 Q16.35 10.7 17.35 11.95"
-          fill="none"
-          stroke="#F5F5F0"
-          strokeWidth="0.8"
-        />
+        <g transform="translate(16.35 11.85) scale(1.3) translate(-16.35 -11.85)">
+          <path
+            d="M9.85 9.15 C11.55 8.55 13.75 8.55 15.35 9.15 C16.45 10.75 16.45 13.45 15.35 14.95 C13.75 15.55 11.55 15.55 9.85 14.95 C8.85 13.45 8.85 10.75 9.85 9.15Z"
+            fill="none"
+            stroke="#F5F5F0"
+            strokeWidth="1.1"
+          />
+          <path
+            d="M17.35 8.95 C19.05 8.35 21.25 8.35 22.85 8.95 C23.95 10.55 23.95 13.25 22.85 14.75 C21.25 15.35 19.05 15.35 17.35 14.75 C16.35 13.25 16.35 10.55 17.35 8.95Z"
+            fill="none"
+            stroke="#F5F5F0"
+            strokeWidth="1.1"
+          />
+          <path
+            d="M16.1 12.0 Q16.35 10.8 16.6 12.0"
+            fill="none"
+            stroke="#F5F5F0"
+            strokeWidth="1.1"
+          />
+        </g>
       </g>
     </>
   );
 }
 
-export function AnimatedLogo({ logoSrc, phase, size = 28 }: AnimatedLogoProps) {
+export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLogoProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [winking, setWinking] = useState(false);
 
   const isConsuela = logoSrc.includes("consuela");
 
@@ -147,9 +151,19 @@ export function AnimatedLogo({ logoSrc, phase, size = 28 }: AnimatedLogoProps) {
     .join(" ");
 
   // Thinking classes per persona
-  const claudiaThinkingClass = !isConsuela && phase === "thinking" ? "claudia-thinking" : "";
+  const claudiaThinkingClass = !isConsuela && phase === "thinking" ? "claudia-thinking" : winking && !isConsuela ? "claudia-wink" : "";
   const consuelaBodyClass = isConsuela && phase === "thinking" ? "consuela-body-thinking" : "";
   const consuelaGlassesClass = isConsuela && phase === "thinking" ? "consuela-glasses-thinking" : "";
+
+  const handleClick = () => {
+    if (!onClick || isConsuela) return;
+    setWinking(true);
+    onClick();
+  };
+
+  const handleAnimationEnd = () => {
+    setWinking(false);
+  };
 
   return (
     <svg
@@ -157,10 +171,14 @@ export function AnimatedLogo({ logoSrc, phase, size = 28 }: AnimatedLogoProps) {
       width={size}
       height={size}
       viewBox="0 0 24 24"
+      overflow="visible"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={svgClassName}
       aria-hidden="true"
+      onClick={handleClick}
+      onAnimationEnd={handleAnimationEnd}
+      style={{ cursor: onClick ? "pointer" : undefined }}
     >
       {isConsuela ? (
         <ConsuelaSvg bodyClass={consuelaBodyClass} glassesClass={consuelaGlassesClass} />
