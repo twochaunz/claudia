@@ -8,6 +8,7 @@ import { ChatInput } from "@/components/ChatInput";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  logoSrc?: string;
 }
 
 type Persona = "claudia" | "consuela";
@@ -36,13 +37,15 @@ export default function Home() {
   const [pendingResponse, setPendingResponse] = useState<string | null>(null);
   const [persona, setPersona] = useState<Persona>("claudia");
 
-  // Ref to avoid stale closure in handleTypingComplete
+  // Refs to avoid stale closures in handleTypingComplete
   const pendingResponseRef = useRef<string | null>(null);
+  const pendingLogoRef = useRef<string>("/claude-logo.svg");
   useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
 
   const handleSend = useCallback((text: string) => {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
+    pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
 
     const baseDelay = 1500;
     const perChar = 30 * text.length;
@@ -58,7 +61,7 @@ export default function Home() {
   const handleTypingComplete = useCallback(() => {
     const response = pendingResponseRef.current;
     if (response !== null) {
-      setMessages((prev) => [...prev, { role: "assistant", content: response }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: response, logoSrc: pendingLogoRef.current }]);
     }
     setPendingResponse(null);
   }, []);

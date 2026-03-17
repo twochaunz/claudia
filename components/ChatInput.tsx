@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { ModelSelector } from "./ModelSelector";
 
 type Persona = "claudia" | "consuela";
@@ -15,31 +15,27 @@ interface ChatInputProps {
 
 export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLanding }: ChatInputProps) {
   const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-focus the input when it becomes enabled (cycle complete)
+  useEffect(() => {
+    if (!disabled && !isLanding && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [disabled, isLanding]);
 
   const handleSend = () => {
     const trimmed = value.trim();
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
-    }
-  };
-
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setValue(e.target.value);
-    if (!isLanding) {
-      const el = e.target;
-      el.style.height = "auto";
-      el.style.height = Math.min(el.scrollHeight, 200) + "px";
     }
   };
 
@@ -56,21 +52,34 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           boxShadow: "0 0.25rem 1.25rem rgba(0,0,0,0.035)",
         }}
       >
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleInput}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder={placeholder}
-          rows={isLanding ? 4 : 1}
-          className={`w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)] ${isLanding ? "" : "flex-1"}`}
-          style={{
-            color: "var(--text-primary)",
-            maxHeight: isLanding ? "none" : "200px",
-            minHeight: isLanding ? "100px" : "auto",
-          }}
-        />
+        {isLanding ? (
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            placeholder={placeholder}
+            rows={4}
+            className="w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+            style={{
+              color: "var(--text-primary)",
+              minHeight: "100px",
+            }}
+          />
+        ) : (
+          <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
+            placeholder={placeholder}
+            className="w-full bg-transparent text-[15px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+            style={{ color: "var(--text-primary)" }}
+          />
+        )}
         <div className="flex items-center justify-between mt-2">
           <div />
           <div className="flex items-center gap-2">

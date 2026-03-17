@@ -9,6 +9,7 @@ import { AnimatedLogo } from "./AnimatedLogo";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  logoSrc?: string;
 }
 
 type Phase = "idle" | "scrolling" | "thinking" | "transitioning" | "typing" | "settled" | "settling";
@@ -36,7 +37,9 @@ export function MessageList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
+  const thinkingContentRef = useRef<HTMLDivElement>(null);
   const wasSettlingRef = useRef(false);
+  const [thinkingH, setThinkingH] = useState(0);
 
   // --- Debug instrumentation ---
   const measure = useCallback(() => {
@@ -193,6 +196,13 @@ export function MessageList({
     setPhase("settled");
   }, []);
 
+  // --- Measure thinking indicator height ---
+  useEffect(() => {
+    if ((phase === "scrolling" || phase === "thinking") && thinkingContentRef.current) {
+      setThinkingH(thinkingContentRef.current.offsetHeight);
+    }
+  }, [phase]);
+
   // --- Derived state ---
   const lastUserIndex = messages.reduce(
     (acc, msg, i) => (msg.role === "user" ? i : acc),
@@ -204,6 +214,9 @@ export function MessageList({
   const thinkingOpacity = phase === "thinking" ? 1 : 0;
   const responseOpacity = phase === "typing" || phase === "settled" || phase === "settling" ? 1 : 0;
   const logoPhase = phase === "typing" ? "typing" : (phase === "settled" || phase === "settling") ? "settled" : "thinking";
+  // Hold space for thinking indicator through transitioning; collapse only
+  // once typing starts (response is visible) so the logo doesn't overshoot.
+  const holdThinkingSpace = phase === "scrolling" || phase === "thinking" || phase === "transitioning";
 
   return (
     <div ref={scrollContainerRef} className="flex-1 overflow-y-auto chat-scroll relative">
@@ -226,27 +239,41 @@ export function MessageList({
         {messages.map((msg, i) => (
           <div key={i}>
             {i === lastUserIndex && <div ref={latestUserRef} />}
-            <ChatMessage role={msg.role} content={msg.content} logoSrc={logoSrc} />
+            <ChatMessage role={msg.role} content={msg.content} logoSrc={msg.logoSrc || logoSrc} />
           </div>
         ))}
 
         {/* Active response area — matches ChatMessage assistant layout (mb-4, mt-3 logo) */}
         {isActive && (
           <div ref={activeAreaRef} className="mb-4">
-            {/* Content area: CSS Grid overlay — both layers share one cell.
-                The taller content determines the cell height, so no layout
-                shift when cross-fading between thinking and response. */}
-            <div style={{ display: "grid" }}>
-              {/* Thinking content — same grid cell, contributes to height */}
+            {/* Content area: thinking is absolutely positioned (no layout contribution).
+                Response wrapper uses animated min-height to hold space during thinking,
+                then collapses smoothly so the logo slides up to sit below the text. */}
+            <div style={{ position: "relative" }}>
+              {/* Thinking — absolutely positioned overlay, fades out */}
               <div
+                ref={thinkingContentRef}
                 data-testid="thinking-wrapper"
-                style={{ gridArea: "1/1", opacity: thinkingOpacity, transition: "opacity 200ms ease-out" }}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  opacity: thinkingOpacity,
+                  transition: "opacity 200ms ease-out",
+                  pointerEvents: thinkingVisible ? "auto" : "none",
+                }}
               >
                 <ThinkingIndicator isVisible={thinkingVisible} />
               </div>
 
-              {/* Response content — same grid cell, overlaps thinking */}
-              <div style={{ gridArea: "1/1", opacity: responseOpacity, transition: "opacity 200ms ease-in", minHeight: "60px" }}>
+              {/* Response — in normal flow; min-height matches thinking during
+                  scrolling/thinking phases, then collapses to let logo slide up */}
+              <div style={{
+                opacity: responseOpacity,
+                transition: "opacity 200ms ease-in, min-height 400ms ease-out",
+                minHeight: holdThinkingSpace ? thinkingH : 0,
+              }}>
                 {pendingResponse !== null && (
                   <TypedResponse
                     text={pendingResponse}
