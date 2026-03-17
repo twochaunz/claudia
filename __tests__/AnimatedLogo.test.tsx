@@ -75,6 +75,13 @@ describe("AnimatedLogo", () => {
       );
       expect(container.querySelector("svg")?.classList.contains("logo-rotating")).toBe(true);
     });
+
+    it("applies logo-settling class during settled phase", () => {
+      const { container } = render(
+        <AnimatedLogo logoSrc="/consuela-logo.svg" phase="settled" />
+      );
+      expect(container.querySelector("svg")?.classList.contains("logo-settling")).toBe(true);
+    });
   });
 
   describe("no SVG filters remain", () => {
