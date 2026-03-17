@@ -67,6 +67,8 @@ No changes to the existing SVG paths (body silhouette, glasses ovals, bridge arc
 | Settling | CSS transition ease to rest (unchanged) | CSS transition ease to rest (unchanged) |
 | Settled | Static | Static |
 
+**Note on `MessageList` phase mapping**: The `logoPhase` in `MessageList.tsx` maps `scrolling` and `transitioning` to the `"thinking"` logo phase. This means the thinking animations (sporadic blink / stop-motion) will also play during scroll and during the 250ms transitioning fade-out. This is intentional — the animation should be active whenever the model is processing.
+
 ### Claudia Thinking: Sporadic Blink
 
 Lashes collapse to the lid line via `scaleY(0.05)` and spring back to `scaleY(1)`. The entire lash group (lid + all 6 lashes) is wrapped in a `<g>` and animated together.
@@ -74,7 +76,7 @@ Lashes collapse to the lid line via `scaleY(0.05)` and spring back to `scaleY(1)
 **Timing**: 8s CSS keyframe cycle with irregular blink placement:
 - Gaps between blinks range from **0.3s to 1.3s**
 - Pattern includes **single blinks** and **double-blinks** (two blinks separated by 0.3s)
-- 6 blink events per cycle: 4 singles + 2 doubles
+- 7 blink events per cycle: 5 singles + 2 doubles
 - `transform-origin: 12px 17.5px` (base of lashes / lid line)
 
 **Keyframe**: `lash-sporadic-blink`
@@ -108,16 +110,16 @@ Two independent CSS animations running simultaneously on separate SVG groups:
 **Body scale-breathe** (`consuela-body-think`):
 - 6 discrete frames via `steps(6)`
 - 0.8s cycle (medium speed, ~133ms per frame)
-- Subtle scale variation around the base `0.024` factor: `0.0236` to `0.0244`
-- Slight Y-translate variation for organic feel
+- Applied to a wrapping `<g>` element around the body `<g>` (which retains its existing `transform="translate(0,24) scale(0.024,-0.024)"`)
+- Keyframe values are **relative scale multipliers** around `1.0`, not absolute values — the base transform on the inner `<g>` handles the coordinate mapping
 
 ```
-Frame 1: scale(0.024, -0.024)     — normal
-Frame 2: scale(0.0244, -0.0244)   — slightly bigger
-Frame 3: scale(0.0236, -0.0236)   — slightly smaller
-Frame 4: scale(0.0242, -0.0242)   — slightly bigger
-Frame 5: scale(0.0237, -0.0237)   — slightly smaller
-Frame 6: scale(0.0241, -0.0241)   — near normal
+Frame 1: scale(1.0)      — normal
+Frame 2: scale(1.017)    — slightly bigger
+Frame 3: scale(0.983)    — slightly smaller
+Frame 4: scale(1.008)    — slightly bigger
+Frame 5: scale(0.988)    — slightly smaller
+Frame 6: scale(1.004)    — near normal
 ```
 
 **Glasses rotation** (`consuela-glasses-think`):
@@ -146,10 +148,12 @@ No changes to existing behavior for either persona:
 ### Removed
 
 - JS `requestAnimationFrame` animation loop in `AnimatedLogo.tsx`
+- `rafRef` ref (no longer needed without rAF loop)
 - `feTurbulence` and `feDisplacementMap` SVG filter elements
 - `filterRef` ref
-- `filterId` generation
+- `filterId` generation and `useId` import
 - `applyFilter` logic and inline `filter` style
+- Runtime `window.matchMedia("(prefers-reduced-motion: reduce)")` JS check — reduced-motion handling moves entirely to CSS `@media` queries. CSS classes are applied unconditionally; `@media (prefers-reduced-motion: reduce)` rules in `globals.css` handle suppression.
 
 ### Added
 
@@ -172,7 +176,9 @@ No changes to existing behavior for either persona:
   - Both + typing → `logo-rotating` on SVG element (unchanged)
   - Both + settled → `logo-settling` on SVG element (unchanged)
 - Remove `useEffect` for thinking phase JS animation
-- Remove `filterRef`, `filterId`, `useId` import
+- Remove `filterRef`, `rafRef`, `filterId`, `useId` import
+- Remove runtime `reducedMotion` JS check — CSS handles this now
+- Apply CSS classes unconditionally regardless of motion preference
 - Keep `handleSettling` logic unchanged (reads computed rotation matrix)
 
 **`public/claude-logo.svg`**:
@@ -191,3 +197,4 @@ No changes to existing behavior for either persona:
 | `components/AnimatedLogo.tsx` | New lash SVG, persona-aware CSS classes, remove JS animation + filter |
 | `app/globals.css` | New keyframes: sporadic blink, stop-motion body/glasses |
 | `public/claude-logo.svg` | Update to lash design |
+| `__tests__/AnimatedLogo.test.tsx` | Update: remove filter assertions (`feTurbulence`, `feDisplacementMap`, `svg.style.filter`), add assertions for correct CSS class presence based on phase + persona |
