@@ -132,6 +132,36 @@ html, body {
   animation: lash-sporadic-blink 8s ease-in-out infinite;
 }
 
+@keyframes consuela-body-think {
+  0%     { transform: scale(1); }
+  16.6%  { transform: scale(1.017); }
+  33.3%  { transform: scale(0.983); }
+  50%    { transform: scale(1.008); }
+  66.6%  { transform: scale(0.988); }
+  83.3%  { transform: scale(1.004); }
+  100%   { transform: scale(1); }
+}
+
+@keyframes consuela-glasses-think {
+  0%     { transform: rotate(0deg); }
+  16.6%  { transform: rotate(4.5deg); }
+  33.3%  { transform: rotate(-3deg); }
+  50%    { transform: rotate(5deg); }
+  66.6%  { transform: rotate(-4deg); }
+  83.3%  { transform: rotate(2deg); }
+  100%   { transform: rotate(0deg); }
+}
+
+.consuela-body-thinking {
+  transform-origin: 12px 12px;
+  animation: consuela-body-think 0.8s steps(6) infinite;
+}
+
+.consuela-glasses-thinking {
+  transform-origin: 16px 12px;
+  animation: consuela-glasses-think 0.8s steps(6) infinite;
+}
+
 .logo-settling {
   transition: transform 0.5s ease-out;
 }
@@ -151,7 +181,10 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .logo-rotating,
   .animate-fade-in,
-  .word-reveal {
+  .word-reveal,
+  .claudia-thinking,
+  .consuela-body-thinking,
+  .consuela-glasses-thinking {
     animation: none !important;
   }
   .word-reveal {
