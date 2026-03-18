@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { TypedResponse } from "./TypedResponse";
@@ -34,7 +34,6 @@ export function MessageList({
   onReset,
 }: MessageListProps) {
   const [phase, setPhase] = useState<Phase>("idle");
-  const [debugInfo, setDebugInfo] = useState("");
   const latestUserRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -43,49 +42,6 @@ export function MessageList({
   const thinkingContentRef = useRef<HTMLDivElement>(null);
   const wasSettlingRef = useRef(false);
   const [thinkingH, setThinkingH] = useState(0);
-
-  // --- Debug instrumentation ---
-  const measure = useCallback(() => {
-    const c = scrollContainerRef.current;
-    const h = headerRef.current;
-    const u = latestUserRef.current;
-    const a = activeAreaRef.current;
-    return {
-      scrollTop: c?.scrollTop ?? 0,
-      scrollH: c?.scrollHeight ?? 0,
-      clientH: c?.clientHeight ?? 0,
-      headerH: h?.offsetHeight ?? 0,
-      scrollPadding: c?.style.scrollPaddingTop ?? "unset",
-      userMsgTop: u ? Math.round(u.getBoundingClientRect().top) : null,
-      activeH: a?.offsetHeight ?? 0,
-      maxScroll: c ? c.scrollHeight - c.clientHeight : 0,
-    };
-  }, []);
-
-  // Log every phase transition
-  useEffect(() => {
-    const m = measure();
-    const line = `[${phase}] sT=${m.scrollTop.toFixed(1)} sH=${m.scrollH} cH=${m.clientH} maxS=${m.maxScroll} hdrH=${m.headerH} sPad=${m.scrollPadding} userTop=${m.userMsgTop} activeH=${m.activeH}`;
-    console.log(line);
-    setDebugInfo(line);
-  }, [phase, measure]);
-
-  // Log scroll events
-  useEffect(() => {
-    const c = scrollContainerRef.current;
-    if (!c) return;
-    let last = c.scrollTop;
-    const onScroll = () => {
-      const delta = c.scrollTop - last;
-      if (Math.abs(delta) > 0.5) {
-        const m = measure();
-        console.log(`[SCROLL] Δ=${delta.toFixed(1)} now=${c.scrollTop.toFixed(1)} sH=${m.scrollH} cH=${m.clientH} userTop=${m.userMsgTop}`);
-      }
-      last = c.scrollTop;
-    };
-    c.addEventListener("scroll", onScroll, { passive: true });
-    return () => c.removeEventListener("scroll", onScroll);
-  }, [measure]);
 
   // --- Phase sequencer: react to external prop changes ---
 
@@ -169,23 +125,17 @@ export function MessageList({
   // before the browser paints (no intermediate frame).
   useLayoutEffect(() => {
     if (phase !== "settling") return;
-    const pre = measure();
-    console.log(`[SETTLE-PRE] sT=${pre.scrollTop.toFixed(1)} sH=${pre.scrollH} cH=${pre.clientH} userTop=${pre.userMsgTop} activeH=${pre.activeH}`);
     wasSettlingRef.current = true;
     onTypingComplete();
     setPhase("idle");
-  }, [phase, onTypingComplete, measure]);
+  }, [phase, onTypingComplete]);
 
   // After settling→idle DOM commit: re-anchor the latest user message
   // to the top of the viewport before the browser paints, then trim spacer.
   useLayoutEffect(() => {
     if (!wasSettlingRef.current || phase !== "idle") return;
-    const pre = measure();
-    console.log(`[SETTLE-POST-BEFORE-SCROLL] sT=${pre.scrollTop.toFixed(1)} sH=${pre.scrollH} cH=${pre.clientH} userTop=${pre.userMsgTop} activeH=${pre.activeH}`);
     wasSettlingRef.current = false;
     latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
-    const post = measure();
-    console.log(`[SETTLE-POST-AFTER-SCROLL] sT=${post.scrollTop.toFixed(1)} sH=${post.scrollH} cH=${post.clientH} userTop=${post.userMsgTop}`);
 
     // Trim spacer via direct DOM manipulation (no state → no re-render → no shift)
     const c = scrollContainerRef.current;
@@ -196,7 +146,7 @@ export function MessageList({
         spacerRef.current.style.height = `${Math.max(0, currentH - excess)}px`;
       }
     }
-  }, [phase, measure]);
+  }, [phase]);
 
   // --- Sync scroll-padding-top with actual header height ---
   useEffect(() => {
@@ -310,26 +260,6 @@ export function MessageList({
             the active area (129px) is replaced by the shorter committed ChatMessage (~65px).
             80dvh provides ≥80px buffer on small viewports, absorbing the ~64px height drop. */}
         <div ref={spacerRef} className="h-[80dvh]" />
-      </div>
-      {/* Debug overlay — remove after fixing */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 80,
-          right: 8,
-          backgroundColor: "rgba(0,0,0,0.85)",
-          color: "#0f0",
-          fontFamily: "monospace",
-          fontSize: "11px",
-          padding: "6px 10px",
-          borderRadius: 6,
-          zIndex: 9999,
-          maxWidth: 420,
-          wordBreak: "break-all",
-          pointerEvents: "none",
-        }}
-      >
-        {debugInfo}
       </div>
     </div>
   );
