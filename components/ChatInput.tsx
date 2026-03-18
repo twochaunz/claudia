@@ -18,10 +18,14 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus the input when it becomes enabled (cycle complete)
+  // Auto-focus: on landing (textarea) or when input becomes enabled (cycle complete)
   useEffect(() => {
-    if (!disabled && !isLanding && inputRef.current) {
-      inputRef.current.focus();
+    if (!disabled) {
+      if (isLanding && textareaRef.current) {
+        textareaRef.current.focus();
+      } else if (!isLanding && inputRef.current) {
+        inputRef.current.focus();
+      }
     }
   }, [disabled, isLanding]);
 
