@@ -165,7 +165,7 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
     setWinking(false);
   };
 
-  return (
+  const svgElement = (
     <svg
       ref={svgRef}
       width={size}
@@ -176,11 +176,8 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
       xmlns="http://www.w3.org/2000/svg"
       className={svgClassName}
       aria-hidden="true"
-      onClick={handleClick}
       onAnimationEnd={handleAnimationEnd}
-      style={{ cursor: onClick ? "pointer" : undefined }}
     >
-      {/* Transparent hit area for reliable mobile tap */}
       <rect width="24" height="24" fill="transparent" />
       {isConsuela ? (
         <ConsuelaSvg bodyClass={consuelaBodyClass} glassesClass={consuelaGlassesClass} />
@@ -189,4 +186,25 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
       )}
     </svg>
   );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={handleClick}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          margin: 0,
+          display: "inline-flex",
+          cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
+        }}
+      >
+        {svgElement}
+      </button>
+    );
+  }
+
+  return svgElement;
 }

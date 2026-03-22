@@ -86,7 +86,7 @@ export default function Home() {
       >
         <div className="w-full max-w-3xl px-4">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <AnimatedLogo logoSrc={logoSrc} phase="settled" size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
+            <AnimatedLogo logoSrc={logoSrc} phase={persona === "consuela" ? "thinking" : "settled"} size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
             <h1
               className="text-[40px] font-normal"
               style={{ color: "var(--text-primary)" }}
