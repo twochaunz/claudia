@@ -109,7 +109,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--bg-primary)" }}>
+    <div className="flex flex-col h-dvh" style={{ backgroundColor: "var(--bg-primary)" }}>
       <MessageList
         messages={messages}
         isThinking={isThinking}

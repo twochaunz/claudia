@@ -74,16 +74,23 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
-/* Scrollbar styling */
-.chat-scroll::-webkit-scrollbar {
-  width: 6px;
+/* Scrollbar styling — desktop only */
+@media (hover: hover) {
+  .chat-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .chat-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .chat-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--border-color);
+    border-radius: 3px;
+  }
 }
-.chat-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-.chat-scroll::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
-  border-radius: 3px;
+
+/* Prevent tap highlight on mobile */
+button, a, [onclick] {
+  -webkit-tap-highlight-color: transparent;
 }
 
 @keyframes logo-rotate {

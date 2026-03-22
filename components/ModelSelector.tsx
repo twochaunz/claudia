@@ -14,13 +14,13 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
   }, []);
 
   const displayName = persona === "claudia" ? "Claudia" : "Consuela";
@@ -29,7 +29,7 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-[14px] font-medium px-2 py-1 rounded-lg transition-colors cursor-pointer bg-transparent border-none"
+        className="flex items-center gap-1 text-[14px] font-medium px-3 py-2 rounded-lg transition-colors cursor-pointer bg-transparent border-none active:opacity-70"
         style={{ color: "var(--text-secondary)" }}
       >
         {displayName}
@@ -52,7 +52,7 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
 
       {open && (
         <div
-          className="absolute bottom-full mb-2 right-0 w-56 rounded-xl border py-1 shadow-lg z-50"
+          className="absolute bottom-full mb-2 right-0 w-56 max-w-[calc(100vw-2rem)] rounded-xl border py-1 shadow-lg z-50"
           style={{
             backgroundColor: "var(--input-bg)",
             borderColor: "var(--input-border)",
@@ -60,7 +60,7 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
         >
           <button
             onClick={() => { onPersonaChange("claudia"); setOpen(false); }}
-            className="w-full flex items-center justify-between px-4 py-3 text-[15px] text-left bg-transparent border-none cursor-pointer transition-colors hover:opacity-80"
+            className="w-full flex items-center justify-between px-4 py-3 text-[15px] text-left bg-transparent border-none cursor-pointer transition-colors active:opacity-80"
             style={{ color: "var(--text-primary)" }}
           >
             <div>
@@ -77,7 +77,7 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
           </button>
           <button
             onClick={() => { onPersonaChange("consuela"); setOpen(false); }}
-            className="w-full flex items-center justify-between px-4 py-3 text-[15px] text-left bg-transparent border-none cursor-pointer transition-colors hover:opacity-80"
+            className="w-full flex items-center justify-between px-4 py-3 text-[15px] text-left bg-transparent border-none cursor-pointer transition-colors active:opacity-80"
             style={{ color: "var(--text-primary)" }}
           >
             <div>

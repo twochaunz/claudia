@@ -92,7 +92,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
               onClick={handleSend}
               disabled={disabled || !hasText}
               aria-label="Send"
-              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer border-none"
+              className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer border-none active:opacity-80"
               style={{
                 backgroundColor: hasText ? "var(--accent-orange)" : "var(--text-secondary)",
                 opacity: hasText ? 1 : 0.4,
