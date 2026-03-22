@@ -180,6 +180,8 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
       onAnimationEnd={handleAnimationEnd}
       style={{ cursor: onClick ? "pointer" : undefined }}
     >
+      {/* Transparent hit area for reliable mobile tap */}
+      <rect width="24" height="24" fill="transparent" />
       {isConsuela ? (
         <ConsuelaSvg bodyClass={consuelaBodyClass} glassesClass={consuelaGlassesClass} />
       ) : (

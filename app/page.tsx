@@ -127,10 +127,11 @@ export default function Home() {
         onPersonaChange={handlePersonaChange}
       />
       <p
-        className="text-center text-[13px] pb-2"
+        className="text-center text-[13px] pb-2 whitespace-nowrap"
         style={{ color: "var(--text-secondary)" }}
       >
-        Claudia and Consuela can make mistakes. Please double-check responses.
+        Claudia and Consuela can make mistakes.<br />
+        Please double-check responses.
       </p>
     </div>
   );
