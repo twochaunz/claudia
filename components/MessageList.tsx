@@ -185,7 +185,7 @@ export function MessageList({
   const holdThinkingSpace = phase === "scrolling" || phase === "thinking" || phase === "transitioning";
 
   return (
-    <div ref={scrollContainerRef} className="flex-1 overflow-y-scroll chat-scroll relative">
+    <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-scroll chat-scroll relative">
       {/* Sticky header with gradient — content scrolls behind it and fades */}
       <div
         ref={headerRef}

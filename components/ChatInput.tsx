@@ -18,14 +18,13 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus: on landing (textarea) or when input becomes enabled (cycle complete)
+  // Auto-focus only on the landing textarea at mount. Do NOT programmatically
+  // focus the chat input after the cycle completes: iOS Safari suppresses the
+  // keyboard for focus() calls made outside a user gesture, and subsequent
+  // taps on the already-focused element fail to re-trigger the keyboard.
   useEffect(() => {
-    if (!disabled) {
-      if (isLanding && textareaRef.current) {
-        textareaRef.current.focus();
-      } else if (!isLanding && inputRef.current) {
-        inputRef.current.focus();
-      }
+    if (isLanding && !disabled && textareaRef.current) {
+      textareaRef.current.focus();
     }
   }, [disabled, isLanding]);
 
