@@ -65,20 +65,35 @@ export function MessageList({
     }
 
     const container = scrollContainerRef.current;
-    const fallbackTimer = setTimeout(() => setPhase("thinking"), 1000);
 
+    // Detect scroll idle via debounced scroll events.
+    // scrollend is not supported on iOS Safari, so we use a universal approach.
     if (container) {
-      const onScrollEnd = () => {
-        clearTimeout(fallbackTimer);
-        setPhase("thinking");
+      let scrollTimer: ReturnType<typeof setTimeout>;
+      const onScroll = () => {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          container.removeEventListener("scroll", onScroll);
+          setPhase("thinking");
+        }, 150);
       };
-      container.addEventListener("scrollend", onScrollEnd, { once: true });
+      container.addEventListener("scroll", onScroll, { passive: true });
+
+      // Fallback if no scroll event fires (content already in view)
+      const fallbackTimer = setTimeout(() => {
+        container.removeEventListener("scroll", onScroll);
+        setPhase("thinking");
+      }, 300);
+
       return () => {
+        clearTimeout(scrollTimer);
         clearTimeout(fallbackTimer);
-        container.removeEventListener("scrollend", onScrollEnd);
+        container.removeEventListener("scroll", onScroll);
       };
     }
 
+    // No container — advance immediately
+    const fallbackTimer = setTimeout(() => setPhase("thinking"), 100);
     return () => clearTimeout(fallbackTimer);
   }, [phase]);
 
@@ -194,12 +209,16 @@ export function MessageList({
           background: "linear-gradient(to bottom, var(--bg-primary) 55%, transparent 100%)",
         }}
       >
-        <div className="flex items-center gap-2 cursor-pointer" onClick={onReset}>
+        <button
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={onReset}
+          style={{ background: "none", border: "none", padding: 0, margin: 0, WebkitTapHighlightColor: "transparent" }}
+        >
           <AnimatedLogo logoSrc={logoSrc} phase="settled" size={logoSrc.includes("consuela") ? 26 : 32} />
           <span className="text-[24px] font-normal" style={{ color: "var(--text-primary)" }}>
             {displayName}
           </span>
-        </div>
+        </button>
       </div>
       <div className="max-w-3xl mx-auto px-4 pb-6">
         {messages.map((msg, i) => (

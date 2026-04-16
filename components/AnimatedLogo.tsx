@@ -119,11 +119,12 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
 
   const isConsuela = logoSrc.includes("consuela");
 
-  // Typing -> Settled: capture rotation angle and decelerate
+  // Typing -> Settled: capture rotation angle and decelerate.
+  // Uses webkitTransform fallback for iOS Safari compatibility.
   const handleSettling = useCallback(() => {
     if (!svgRef.current) return;
     const computed = getComputedStyle(svgRef.current);
-    const matrix = computed.transform;
+    const matrix = computed.transform || (computed as unknown as Record<string, string>).webkitTransform;
     if (matrix && matrix !== "none") {
       const values = matrix.match(/matrix\((.+)\)/)?.[1]?.split(",").map(Number);
       if (values) {
@@ -156,14 +157,27 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
   const consuelaGlassesClass = isConsuela && phase === "thinking" ? "consuela-glasses-thinking" : "";
 
   const handleClick = () => {
-    if (!onClick || isConsuela) return;
-    setWinking(true);
+    if (!onClick) return;
+    if (!isConsuela) {
+      setWinking(true);
+    }
     onClick();
   };
 
+  // Clear wink state when animation ends.
+  // setTimeout fallback for iOS Safari where animationend on SVG is unreliable.
+  const winkTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleAnimationEnd = () => {
+    clearTimeout(winkTimerRef.current);
     setWinking(false);
   };
+
+  useEffect(() => {
+    if (winking) {
+      winkTimerRef.current = setTimeout(() => setWinking(false), 1300);
+      return () => clearTimeout(winkTimerRef.current);
+    }
+  }, [winking]);
 
   const svgElement = (
     <svg
@@ -178,7 +192,6 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
       aria-hidden="true"
       onAnimationEnd={handleAnimationEnd}
     >
-      <rect width="24" height="24" fill="transparent" />
       {isConsuela ? (
         <ConsuelaSvg bodyClass={consuelaBodyClass} glassesClass={consuelaGlassesClass} />
       ) : (
