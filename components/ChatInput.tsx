@@ -68,6 +68,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             style={{
               color: "var(--text-primary)",
               minHeight: "100px",
+              touchAction: "manipulation",
             }}
           />
         ) : (
@@ -80,7 +81,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             disabled={disabled}
             placeholder={placeholder}
             className="w-full bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
-            style={{ color: "var(--text-primary)" }}
+            style={{ color: "var(--text-primary)", touchAction: "manipulation" }}
           />
         )}
         <div className="flex items-center justify-between mt-2">

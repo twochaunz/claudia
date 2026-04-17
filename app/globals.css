@@ -135,6 +135,7 @@ button, a, [onclick] {
 }
 
 .claudia-thinking {
+  transform-box: view-box;
   transform-origin: 12px 17.5px;
   animation: lash-sporadic-blink 8s ease-in-out infinite;
 }
@@ -151,6 +152,7 @@ button, a, [onclick] {
 }
 
 .claudia-wink {
+  transform-box: view-box;
   transform-origin: 12px 17.5px;
   animation: lash-wink 1.2s ease-in-out 1;
 }
@@ -176,11 +178,13 @@ button, a, [onclick] {
 }
 
 .consuela-body-thinking {
+  transform-box: view-box;
   transform-origin: 12px 12px;
   animation: consuela-body-think 0.8s steps(6) infinite;
 }
 
 .consuela-glasses-thinking {
+  transform-box: view-box;
   transform-origin: 16px 12px;
   animation: consuela-glasses-think 0.8s steps(6) infinite;
 }
@@ -200,15 +204,14 @@ button, a, [onclick] {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Accessibility: respect reduced motion preference */
+/* Accessibility: respect reduced motion preference.
+   Only suppress motion-heavy animations (spinning, sliding text).
+   Keep small decorative logo animations (blink, wobble) — they're
+   subtle enough to not trigger motion sensitivity. */
 @media (prefers-reduced-motion: reduce) {
   .logo-rotating,
   .animate-fade-in,
-  .word-reveal,
-  .claudia-thinking,
-  .claudia-wink,
-  .consuela-body-thinking,
-  .consuela-glasses-thinking {
+  .word-reveal {
     animation: none !important;
   }
   .word-reveal {
