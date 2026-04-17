@@ -45,10 +45,25 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const hasText = value.trim().length > 0;
   const placeholder = isLanding ? "How are you doing today?" : "Reply...";
 
+  const handleBoxTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Tapping anywhere in the input box (not on a button) focuses the input.
+    // This gives a much larger touch target on iOS Safari where the 26px-tall
+    // input element alone is too small to reliably register taps.
+    const target = e.target as HTMLElement;
+    if (!disabled && !target.closest("button")) {
+      if (isLanding) {
+        textareaRef.current?.focus();
+      } else {
+        inputRef.current?.focus();
+      }
+    }
+  };
+
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2">
+    <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0 relative">
       <div
-        className="flex flex-col rounded-2xl border px-4 py-3"
+        className="flex flex-col rounded-2xl border px-4 py-3 cursor-text"
+        onClick={handleBoxTap}
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
