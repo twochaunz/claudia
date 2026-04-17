@@ -62,7 +62,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0 relative">
       <div
-        className="flex flex-col rounded-2xl border px-4 py-3 cursor-text"
+        className="flex flex-col rounded-2xl border px-4 py-3 cursor-pointer"
         onClick={handleBoxTap}
         style={{
           backgroundColor: "var(--input-bg)",
