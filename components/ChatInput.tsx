@@ -15,13 +15,9 @@ interface ChatInputProps {
 
 export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLanding }: ChatInputProps) {
   const [value, setValue] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-focus only on the landing textarea at mount. Do NOT programmatically
-  // focus the chat input after the cycle completes: iOS Safari suppresses the
-  // keyboard for focus() calls made outside a user gesture, and subsequent
-  // taps on the already-focused element fail to re-trigger the keyboard.
+  // Auto-focus only on the landing textarea at mount.
   useEffect(() => {
     if (isLanding && !disabled && textareaRef.current) {
       textareaRef.current.focus();
@@ -35,7 +31,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
     setValue("");
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -45,60 +41,32 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const hasText = value.trim().length > 0;
   const placeholder = isLanding ? "How are you doing today?" : "Reply...";
 
-  const handleBoxTap = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Tapping anywhere in the input box (not on a button) focuses the input.
-    // This gives a much larger touch target on iOS Safari where the 26px-tall
-    // input element alone is too small to reliably register taps.
-    const target = e.target as HTMLElement;
-    if (!disabled && !target.closest("button")) {
-      if (isLanding) {
-        textareaRef.current?.focus();
-      } else {
-        inputRef.current?.focus();
-      }
-    }
-  };
-
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0 relative">
+    <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0">
       <div
-        className="flex flex-col rounded-2xl border px-4 py-3 cursor-pointer"
-        onClick={handleBoxTap}
+        className="flex flex-col rounded-2xl border px-4 py-3"
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
           boxShadow: "0 0.25rem 1.25rem rgba(0,0,0,0.035)",
         }}
       >
-        {isLanding ? (
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder={placeholder}
-            rows={4}
-            className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
-            style={{
-              color: "var(--text-primary)",
-              minHeight: "100px",
-              touchAction: "manipulation",
-            }}
-          />
-        ) : (
-          <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-            placeholder={placeholder}
-            className="w-full bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
-            style={{ color: "var(--text-primary)", touchAction: "manipulation" }}
-          />
-        )}
+        <textarea
+          ref={textareaRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          placeholder={placeholder}
+          enterKeyHint="send"
+          rows={isLanding ? 4 : 1}
+          className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
+          style={{
+            color: "var(--text-primary)",
+            minHeight: isLanding ? "100px" : "26px",
+            touchAction: "manipulation",
+          }}
+        />
         <div className="flex items-center justify-between mt-2">
           <div />
           <div className="flex items-center gap-2">
