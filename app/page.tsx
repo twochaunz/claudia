@@ -145,7 +145,7 @@ export default function Home() {
         className="text-center text-[13px] pb-2"
         style={{ color: "var(--text-secondary)" }}
       >
-        Claudia and Consuela can make mistakes.<br />Please double-check responses.
+        Claudia and Consuela can make mistakes.<br className="sm:hidden" /> Please double-check responses.
       </p>
     </div>
   );

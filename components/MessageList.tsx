@@ -38,7 +38,6 @@ export function MessageList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
-  const spacerRef = useRef<HTMLDivElement>(null);
   const thinkingContentRef = useRef<HTMLDivElement>(null);
   const wasSettlingRef = useRef(false);
   const [thinkingH, setThinkingH] = useState(0);
@@ -56,12 +55,9 @@ export function MessageList({
   useEffect(() => {
     if (phase !== "scrolling") return;
 
-    // Reset spacer to full height so scrollIntoView can push content to top
-    if (spacerRef.current) spacerRef.current.style.height = "";
-
-    // Scroll the latest user message to top
+    // Scroll the latest user message into view at the bottom
     if (latestUserRef.current) {
-      latestUserRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      latestUserRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
 
     const container = scrollContainerRef.current;
@@ -146,21 +142,11 @@ export function MessageList({
   }, [phase, onTypingComplete]);
 
   // After settling→idle DOM commit: re-anchor the latest user message
-  // to the top of the viewport before the browser paints, then trim spacer.
+  // to the bottom of the viewport before the browser paints.
   useLayoutEffect(() => {
     if (!wasSettlingRef.current || phase !== "idle") return;
     wasSettlingRef.current = false;
-    latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
-
-    // Trim spacer via direct DOM manipulation (no state → no re-render → no shift)
-    const c = scrollContainerRef.current;
-    if (c && spacerRef.current) {
-      const excess = c.scrollHeight - c.clientHeight - c.scrollTop;
-      if (excess > 0) {
-        const currentH = spacerRef.current.getBoundingClientRect().height;
-        spacerRef.current.style.height = `${Math.max(0, currentH - excess)}px`;
-      }
-    }
+    latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
   }, [phase]);
 
   // --- Sync scroll-padding-top with actual header height ---
@@ -220,7 +206,7 @@ export function MessageList({
           </span>
         </button>
       </div>
-      <div className="max-w-3xl mx-auto px-4 pb-6">
+      <div className="max-w-3xl mx-auto px-4 pb-6 min-h-full flex flex-col justify-end">
         {messages.map((msg, i) => (
           <div key={i}>
             {i === lastUserIndex && <div ref={latestUserRef} />}
@@ -275,10 +261,6 @@ export function MessageList({
           </div>
         )}
 
-        {/* Spacer — enough so the latest user message stays at top even after
-            the active area (129px) is replaced by the shorter committed ChatMessage (~65px).
-            80dvh provides ≥80px buffer on small viewports, absorbing the ~64px height drop. */}
-        <div ref={spacerRef} className="h-[80dvh]" />
       </div>
     </div>
   );
