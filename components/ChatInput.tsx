@@ -45,10 +45,14 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
     <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0">
       <div
         className="flex flex-col rounded-2xl border px-4 py-3"
+        onClick={() => {
+          if (!disabled) textareaRef.current?.focus();
+        }}
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
           boxShadow: "0 0.25rem 1.25rem rgba(0,0,0,0.035)",
+          cursor: "text",
         }}
       >
         <textarea
@@ -63,7 +67,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
           style={{
             color: "var(--text-primary)",
-            minHeight: isLanding ? "100px" : "26px",
+            minHeight: isLanding ? "100px" : "44px",
             touchAction: "manipulation",
           }}
         />
