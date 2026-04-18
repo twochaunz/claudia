@@ -25,7 +25,6 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   }, [disabled, isLanding]);
 
   const handleSend = () => {
-    if (disabled) return;
     const trimmed = value.trim();
     if (!trimmed) return;
     onSend(trimmed);
@@ -78,8 +77,8 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
               aria-label="Send"
               className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer border-none active:opacity-80"
               style={{
-                backgroundColor: hasText && !disabled ? "var(--accent-orange)" : "var(--text-secondary)",
-                opacity: hasText && !disabled ? 1 : 0.4,
+                backgroundColor: hasText ? "var(--accent-orange)" : "var(--text-secondary)",
+                opacity: hasText ? 1 : 0.4,
                 transition: "background-color 150ms ease, opacity 150ms ease",
               }}
             >

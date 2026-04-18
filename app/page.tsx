@@ -40,16 +40,25 @@ export default function Home() {
   // Refs to avoid stale closures in handleTypingComplete
   const pendingResponseRef = useRef<string | null>(null);
   const pendingLogoRef = useRef<string>("/claude-logo.svg");
+  const responseTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
 
   const handleSend = useCallback((text: string) => {
+    // If a response cycle is in progress, commit it immediately
+    if (pendingResponseRef.current !== null) {
+      setMessages((prev) => [...prev, { role: "assistant", content: pendingResponseRef.current!, logoSrc: pendingLogoRef.current }]);
+      setPendingResponse(null);
+    }
+    // Cancel any pending response timer
+    clearTimeout(responseTimerRef.current);
+
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
     pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
 
     // Left-skewed distribution: 2s–5s, favoring shorter delays
     const delay = 2000 + Math.pow(Math.random(), 2) * 3000;
-    setTimeout(() => {
+    responseTimerRef.current = setTimeout(() => {
       setIsThinking(false);
       setPendingResponse(getResponse(persona));
     }, delay);
