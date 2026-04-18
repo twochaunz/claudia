@@ -25,6 +25,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   }, [disabled, isLanding]);
 
   const handleSend = () => {
+    if (disabled) return;
     const trimmed = value.trim();
     if (!trimmed) return;
     onSend(trimmed);
@@ -45,9 +46,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
     <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0">
       <div
         className="flex flex-col rounded-2xl border px-4 py-3"
-        onClick={() => {
-          if (!disabled) textareaRef.current?.focus();
-        }}
+        onClick={() => textareaRef.current?.focus()}
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
@@ -60,7 +59,6 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={disabled}
           placeholder={placeholder}
           enterKeyHint="send"
           rows={isLanding ? 4 : 1}
