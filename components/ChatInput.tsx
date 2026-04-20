@@ -29,6 +29,9 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
+    // Re-focus immediately to keep the iOS keyboard open.
+    // This is inside a user gesture (click/tap), so iOS allows it.
+    textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
