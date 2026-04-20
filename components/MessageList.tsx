@@ -38,6 +38,7 @@ export function MessageList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement>(null);
   const thinkingContentRef = useRef<HTMLDivElement>(null);
   const wasSettlingRef = useRef(false);
   const [thinkingH, setThinkingH] = useState(0);
@@ -55,12 +56,12 @@ export function MessageList({
   useEffect(() => {
     if (phase !== "scrolling") return;
 
-    // Scroll the latest user message into view at the bottom
-    if (latestUserRef.current) {
-      latestUserRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-
     const container = scrollContainerRef.current;
+
+    // Scroll to the very bottom of the chat
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    }
 
     // Detect scroll idle via debounced scroll events.
     // scrollend is not supported on iOS Safari, so we use a universal approach.
@@ -141,12 +142,15 @@ export function MessageList({
     setPhase("idle");
   }, [phase, onTypingComplete]);
 
-  // After settling→idle DOM commit: re-anchor the latest user message
-  // to the bottom of the viewport before the browser paints.
+  // After settling→idle DOM commit: scroll to bottom after layout settles.
+  // Deferred with rAF so the DOM has fully committed before scrolling.
   useLayoutEffect(() => {
     if (!wasSettlingRef.current || phase !== "idle") return;
     wasSettlingRef.current = false;
-    latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
+    requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (container) container.scrollTop = container.scrollHeight;
+    });
   }, [phase]);
 
   // --- Sync scroll-padding-top with actual header height ---
@@ -163,8 +167,8 @@ export function MessageList({
     setPhase("settled");
   }, []);
 
-  // --- Measure thinking indicator height ---
-  useEffect(() => {
+  // --- Measure thinking indicator height (useLayoutEffect to capture before paint) ---
+  useLayoutEffect(() => {
     if ((phase === "scrolling" || phase === "thinking") && thinkingContentRef.current) {
       setThinkingH(thinkingContentRef.current.offsetHeight);
     }
@@ -261,6 +265,8 @@ export function MessageList({
           </div>
         )}
 
+        {/* Bottom anchor for scroll-to-bottom */}
+        <div ref={bottomAnchorRef} aria-hidden="true" />
       </div>
     </div>
   );

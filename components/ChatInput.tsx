@@ -63,11 +63,11 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           enterKeyHint="send"
-          rows={isLanding ? 4 : 1}
+          rows={1}
           className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
           style={{
             color: "var(--text-primary)",
-            minHeight: isLanding ? "100px" : "44px",
+            minHeight: "44px",
             touchAction: "manipulation",
           }}
         />
@@ -76,6 +76,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           <div className="flex items-center gap-2">
             <ModelSelector persona={persona} onPersonaChange={onPersonaChange} />
             <button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleSend}
               aria-label="Send"
               className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer border-none active:opacity-80"
