@@ -26,7 +26,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
 
   const handleSend = () => {
     const trimmed = value.trim();
-    if (!trimmed) return;
+    if (!trimmed || disabled) return;
     onSend(trimmed);
     setValue("");
     // Re-focus immediately to keep the iOS keyboard open.
@@ -71,6 +71,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             touchAction: "manipulation",
             WebkitAppearance: "none",
             appearance: "none",
+            backgroundColor: "transparent",
           }}
         />
         <div className="flex items-center justify-between mt-2">

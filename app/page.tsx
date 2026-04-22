@@ -44,6 +44,9 @@ export default function Home() {
   useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
 
   const handleSend = useCallback((text: string) => {
+    // Cancel any in-flight response timer so two timers never race.
+    clearTimeout(responseTimerRef.current);
+
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
     pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
