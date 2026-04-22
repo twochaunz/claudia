@@ -44,14 +44,6 @@ export default function Home() {
   useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
 
   const handleSend = useCallback((text: string) => {
-    // If a response cycle is in progress, commit it immediately
-    if (pendingResponseRef.current !== null) {
-      setMessages((prev) => [...prev, { role: "assistant", content: pendingResponseRef.current!, logoSrc: pendingLogoRef.current }]);
-      setPendingResponse(null);
-    }
-    // Cancel any pending response timer
-    clearTimeout(responseTimerRef.current);
-
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
     pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
