@@ -29,6 +29,10 @@ export function TypedResponse({ text, onComplete, duration = 1200 }: TypedRespon
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
+    // Reset on each effect run — critical for React Strict Mode
+    // (double-invokes effects) and any dep change that restarts the effect.
+    completedRef.current = false;
+
     // If reduced motion, show everything immediately
     if (reducedMotion) {
       setVisibleCount(totalWords);
