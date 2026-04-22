@@ -100,36 +100,45 @@ export default function Home() {
       }}
     >
       {hasMessages ? (
-        <MessageList
-          messages={messages}
-          isThinking={isThinking}
-          pendingResponse={pendingResponse}
-          logoSrc={logoSrc}
-          displayName={displayName}
-          onTypingComplete={handleTypingComplete}
-          onReset={handleReset}
-        />
+        <>
+          <MessageList
+            messages={messages}
+            isThinking={isThinking}
+            pendingResponse={pendingResponse}
+            logoSrc={logoSrc}
+            displayName={displayName}
+            onTypingComplete={handleTypingComplete}
+            onReset={handleReset}
+          />
+          <ChatInput
+            onSend={handleSend}
+            disabled={isThinking || pendingResponse !== null}
+            persona={persona}
+            onPersonaChange={handlePersonaChange}
+          />
+        </>
       ) : (
         <div className="flex-1 flex items-center justify-center overflow-hidden">
-          <div className="flex items-center gap-3">
-            <AnimatedLogo logoSrc={logoSrc} phase={persona === "consuela" ? "thinking" : "settled"} size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
-            <h1
-              className="text-[40px] font-normal"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {displayName}
-            </h1>
+          <div className="w-full max-w-3xl px-4">
+            <div className="flex items-center justify-center gap-3 mb-6">
+              <AnimatedLogo logoSrc={logoSrc} phase={persona === "consuela" ? "thinking" : "settled"} size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
+              <h1
+                className="text-[40px] font-normal"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {displayName}
+              </h1>
+            </div>
+            <ChatInput
+              onSend={handleSend}
+              disabled={isThinking || pendingResponse !== null}
+              persona={persona}
+              onPersonaChange={handlePersonaChange}
+              isLanding
+            />
           </div>
         </div>
       )}
-
-      <ChatInput
-        onSend={handleSend}
-        disabled={isThinking || pendingResponse !== null}
-        persona={persona}
-        onPersonaChange={handlePersonaChange}
-        isLanding={!hasMessages}
-      />
       {hasMessages && (
         <p
           className="text-center text-[13px] pb-2"
