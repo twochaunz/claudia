@@ -116,9 +116,13 @@ export function MessageList({
     }
   }, [isThinking, phase, onTypingComplete]);
 
-  // Edge case: props reset without completing cycle — return to idle
+  // Edge case: props reset without completing cycle — return to idle.
+  // Excludes "thinking" because there's a brief window between
+  // setIsThinking(false) and setPendingResponse(response) where both
+  // are falsy. If batching fails (iOS WebKit), this guard would
+  // kill the phase before the response arrives.
   useEffect(() => {
-    if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled" && phase !== "settling") {
+    if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled" && phase !== "settling" && phase !== "thinking") {
       setPhase("idle");
     }
   }, [isThinking, pendingResponse, phase]);
