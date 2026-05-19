@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ChatInput } from "@/components/ChatInput";
 
@@ -87,5 +87,19 @@ describe("ChatInput", () => {
     render(<ChatInput {...defaultProps} />);
     expect(screen.queryByRole("button", { name: /voice/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /listening/i })).not.toBeInTheDocument();
+  });
+
+  it("focuses the textarea from a pointer tap after being re-enabled", () => {
+    const { rerender } = render(<ChatInput {...defaultProps} disabled={true} />);
+
+    rerender(<ChatInput {...defaultProps} disabled={false} />);
+
+    const textarea = screen.getByPlaceholderText("Reply...");
+    const inputBox = textarea.closest(".rounded-2xl");
+    expect(inputBox).not.toBeNull();
+
+    fireEvent.pointerDown(inputBox as HTMLElement);
+
+    expect(textarea).toHaveFocus();
   });
 });

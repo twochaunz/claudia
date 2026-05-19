@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import { useState, useRef, useEffect, KeyboardEvent, MouseEvent, PointerEvent } from "react";
 import { ModelSelector } from "./ModelSelector";
 
 type Persona = "claudia" | "consuela";
@@ -42,18 +42,24 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const hasText = value.trim().length > 0;
   const placeholder = isLanding ? "How are you doing today?" : "Reply...";
 
+  const focusTextareaFromBox = (target: EventTarget | null) => {
+    if (disabled) return;
+    if (target instanceof HTMLElement && target.closest("button")) return;
+    textareaRef.current?.focus();
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0">
       <div
         className="flex flex-col rounded-2xl border px-4 py-3"
-        onClick={() => {
-          if (!disabled) textareaRef.current?.focus();
-        }}
+        onPointerDown={(e: PointerEvent<HTMLDivElement>) => focusTextareaFromBox(e.target)}
+        onClick={(e: MouseEvent<HTMLDivElement>) => focusTextareaFromBox(e.target)}
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
           boxShadow: "0 0.25rem 1.25rem rgba(0,0,0,0.035)",
-          cursor: "text",
+          cursor: "pointer",
+          touchAction: "manipulation",
         }}
       >
         <textarea
@@ -73,6 +79,7 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             WebkitAppearance: "none",
             appearance: "none",
             backgroundColor: "transparent",
+            cursor: "text",
           }}
         />
         <div className="flex items-center justify-between mt-2">
