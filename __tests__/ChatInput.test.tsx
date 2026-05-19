@@ -103,6 +103,24 @@ describe("ChatInput", () => {
     expect(textarea).toHaveFocus();
   });
 
+  it("refocuses the reply textarea from a direct pointer tap", () => {
+    const focusSpy = jest.spyOn(HTMLTextAreaElement.prototype, "focus");
+    const blurSpy = jest.spyOn(HTMLTextAreaElement.prototype, "blur");
+    render(<ChatInput {...defaultProps} />);
+
+    const textarea = screen.getByPlaceholderText("Reply...");
+    textarea.focus();
+    focusSpy.mockClear();
+    blurSpy.mockClear();
+
+    fireEvent.pointerDown(textarea);
+
+    expect(blurSpy).toHaveBeenCalledTimes(1);
+    expect(focusSpy).toHaveBeenCalledTimes(1);
+    focusSpy.mockRestore();
+    blurSpy.mockRestore();
+  });
+
   it("lets the landing textarea handle direct pointer taps natively", () => {
     const focusSpy = jest.spyOn(HTMLTextAreaElement.prototype, "focus");
     render(<ChatInput {...defaultProps} isLanding />);

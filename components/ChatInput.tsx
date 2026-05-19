@@ -42,13 +42,21 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   const hasText = value.trim().length > 0;
   const placeholder = isLanding ? "How are you doing today?" : "Reply...";
 
+  const focusTextarea = () => {
+    if (!textareaRef.current) return;
+    if (!isLanding && document.activeElement === textareaRef.current) {
+      textareaRef.current.blur();
+    }
+    textareaRef.current.focus();
+  };
+
   const focusTextareaFromBox = (target: EventTarget | null) => {
     if (disabled) return;
     if (
       target instanceof HTMLElement &&
-      (target.closest("button") || target === textareaRef.current)
+      (target.closest("button") || (isLanding && target === textareaRef.current))
     ) return;
-    textareaRef.current?.focus();
+    focusTextarea();
   };
 
   return (
