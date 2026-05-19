@@ -25,13 +25,11 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
   }, [disabled, isLanding]);
 
   const handleSend = () => {
+    if (disabled) return;
     const trimmed = value.trim();
     if (!trimmed) return;
     onSend(trimmed);
     setValue("");
-    // Re-focus immediately to keep the iOS keyboard open.
-    // This is inside a user gesture (click/tap), so iOS allows it.
-    textareaRef.current?.focus();
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -48,7 +46,9 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
     <div className="w-full max-w-3xl mx-auto px-4 pb-2 pt-2 flex-shrink-0">
       <div
         className="flex flex-col rounded-2xl border px-4 py-3"
-        onClick={() => textareaRef.current?.focus()}
+        onClick={() => {
+          if (!disabled) textareaRef.current?.focus();
+        }}
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
@@ -61,13 +61,14 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
+          disabled={disabled}
           placeholder={placeholder}
           enterKeyHint="send"
-          rows={1}
+          rows={isLanding ? 4 : 1}
           className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
           style={{
             color: "var(--text-primary)",
-            minHeight: "44px",
+            minHeight: isLanding ? "100px" : "44px",
             touchAction: "manipulation",
             WebkitAppearance: "none",
             appearance: "none",
@@ -81,11 +82,12 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
             <button
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleSend}
+              disabled={disabled || !hasText}
               aria-label="Send"
               className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer border-none active:opacity-80"
               style={{
-                backgroundColor: hasText ? "var(--accent-orange)" : "var(--text-secondary)",
-                opacity: hasText ? 1 : 0.4,
+                backgroundColor: hasText && !disabled ? "var(--accent-orange)" : "var(--text-secondary)",
+                opacity: hasText && !disabled ? 1 : 0.4,
                 transition: "background-color 150ms ease, opacity 150ms ease",
               }}
             >

@@ -44,9 +44,6 @@ export default function Home() {
   useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
 
   const handleSend = useCallback((text: string) => {
-    // Cancel any in-flight response timer so two timers never race.
-    clearTimeout(responseTimerRef.current);
-
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setIsThinking(true);
     pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
@@ -83,9 +80,36 @@ export default function Home() {
   const logoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
   const hasMessages = messages.length > 0 || isThinking || pendingResponse !== null;
 
-  // Single layout: content area swaps between landing and chat,
-  // but ChatInput is always the SAME instance so the textarea DOM node
-  // persists across transitions. Keyboard stays open on iOS.
+  if (!hasMessages) {
+    return (
+      <div
+        className="grid place-items-center h-dvh overflow-hidden"
+        style={{ backgroundColor: "var(--bg-primary)" }}
+      >
+        <div className="w-full max-w-3xl px-4">
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <AnimatedLogo logoSrc={logoSrc} phase={persona === "consuela" ? "thinking" : "settled"} size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
+            <h1
+              className="text-[40px] font-normal"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {displayName}
+            </h1>
+          </div>
+
+          <ChatInput
+            onSend={handleSend}
+            disabled={isThinking || pendingResponse !== null}
+            persona={persona}
+            onPersonaChange={handlePersonaChange}
+            isLanding
+          />
+
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="flex flex-col h-dvh min-h-0"
@@ -94,54 +118,29 @@ export default function Home() {
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {hasMessages ? (
-        <>
-          <MessageList
-            messages={messages}
-            isThinking={isThinking}
-            pendingResponse={pendingResponse}
-            logoSrc={logoSrc}
-            displayName={displayName}
-            onTypingComplete={handleTypingComplete}
-            onReset={handleReset}
-          />
-          <ChatInput
-            onSend={handleSend}
-            disabled={isThinking || pendingResponse !== null}
-            persona={persona}
-            onPersonaChange={handlePersonaChange}
-          />
-        </>
-      ) : (
-        <div className="flex-1 flex items-center justify-center overflow-hidden">
-          <div className="w-full max-w-3xl px-4">
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <AnimatedLogo logoSrc={logoSrc} phase={persona === "consuela" ? "thinking" : "settled"} size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
-              <h1
-                className="text-[40px] font-normal"
-                style={{ color: "var(--text-primary)" }}
-              >
-                {displayName}
-              </h1>
-            </div>
-            <ChatInput
-              onSend={handleSend}
-              disabled={isThinking || pendingResponse !== null}
-              persona={persona}
-              onPersonaChange={handlePersonaChange}
-              isLanding
-            />
-          </div>
-        </div>
-      )}
-      {hasMessages && (
-        <p
-          className="text-center text-[13px] pb-2"
-          style={{ color: "var(--text-secondary)" }}
-        >
-          Claudia and Consuela can make mistakes.<br className="sm:hidden" /> Please double-check responses.
-        </p>
-      )}
+      <MessageList
+        messages={messages}
+        isThinking={isThinking}
+        pendingResponse={pendingResponse}
+        logoSrc={logoSrc}
+        activeLogoSrc={pendingLogoRef.current}
+        displayName={displayName}
+        onTypingComplete={handleTypingComplete}
+        onReset={handleReset}
+      />
+
+      <ChatInput
+        onSend={handleSend}
+        disabled={isThinking || pendingResponse !== null}
+        persona={persona}
+        onPersonaChange={handlePersonaChange}
+      />
+      <p
+        className="text-center text-[13px] pb-2"
+        style={{ color: "var(--text-secondary)" }}
+      >
+        Claudia and Consuela can make mistakes.<br className="sm:hidden" /> Please double-check responses.
+      </p>
     </div>
   );
 }

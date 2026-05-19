@@ -19,6 +19,7 @@ interface MessageListProps {
   isThinking: boolean;
   pendingResponse: string | null;
   logoSrc?: string;
+  activeLogoSrc?: string;
   displayName?: string;
   onTypingComplete: () => void;
   onReset?: () => void;
@@ -29,6 +30,7 @@ export function MessageList({
   isThinking,
   pendingResponse,
   logoSrc = "/claude-logo.svg",
+  activeLogoSrc = logoSrc,
   displayName = "Claudia",
   onTypingComplete,
   onReset,
@@ -38,7 +40,7 @@ export function MessageList({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const activeAreaRef = useRef<HTMLDivElement>(null);
-  const bottomAnchorRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
   const thinkingContentRef = useRef<HTMLDivElement>(null);
   const wasSettlingRef = useRef(false);
   const [thinkingH, setThinkingH] = useState(0);
@@ -56,12 +58,15 @@ export function MessageList({
   useEffect(() => {
     if (phase !== "scrolling") return;
 
-    const container = scrollContainerRef.current;
+    // Reset spacer to full height so scrollIntoView can push content to top
+    if (spacerRef.current) spacerRef.current.style.height = "";
 
-    // Scroll to the very bottom of the chat
-    if (container) {
-      container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+    // Scroll the latest user message to top
+    if (latestUserRef.current) {
+      latestUserRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+
+    const container = scrollContainerRef.current;
 
     // Detect scroll idle via debounced scroll events.
     // scrollend is not supported on iOS Safari, so we use a universal approach.
@@ -117,10 +122,8 @@ export function MessageList({
   }, [isThinking, phase, onTypingComplete]);
 
   // Edge case: props reset without completing cycle — return to idle.
-  // Excludes "thinking" because there's a brief window between
-  // setIsThinking(false) and setPendingResponse(response) where both
-  // are falsy. If batching fails (iOS WebKit), this guard would
-  // kill the phase before the response arrives.
+  // Excludes "thinking" because iOS WebKit can briefly paint both
+  // isThinking and pendingResponse as falsy between the timer updates.
   useEffect(() => {
     if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled" && phase !== "settling" && phase !== "thinking") {
       setPhase("idle");
@@ -146,15 +149,22 @@ export function MessageList({
     setPhase("idle");
   }, [phase, onTypingComplete]);
 
-  // After settling→idle DOM commit: scroll to bottom after layout settles.
-  // Deferred with rAF so the DOM has fully committed before scrolling.
+  // After settling→idle DOM commit: re-anchor the latest user message
+  // to the top of the viewport before the browser paints, then trim spacer.
   useLayoutEffect(() => {
     if (!wasSettlingRef.current || phase !== "idle") return;
     wasSettlingRef.current = false;
-    requestAnimationFrame(() => {
-      const container = scrollContainerRef.current;
-      if (container) container.scrollTop = container.scrollHeight;
-    });
+    latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+
+    // Trim spacer via direct DOM manipulation (no state → no re-render → no shift)
+    const c = scrollContainerRef.current;
+    if (c && spacerRef.current) {
+      const excess = c.scrollHeight - c.clientHeight - c.scrollTop;
+      if (excess > 0) {
+        const currentH = spacerRef.current.getBoundingClientRect().height;
+        spacerRef.current.style.height = `${Math.max(0, currentH - excess)}px`;
+      }
+    }
   }, [phase]);
 
   // --- Sync scroll-padding-top with actual header height ---
@@ -171,8 +181,8 @@ export function MessageList({
     setPhase("settled");
   }, []);
 
-  // --- Measure thinking indicator height (useLayoutEffect to capture before paint) ---
-  useLayoutEffect(() => {
+  // --- Measure thinking indicator height ---
+  useEffect(() => {
     if ((phase === "scrolling" || phase === "thinking") && thinkingContentRef.current) {
       setThinkingH(thinkingContentRef.current.offsetHeight);
     }
@@ -214,7 +224,7 @@ export function MessageList({
           </span>
         </button>
       </div>
-      <div className="max-w-3xl mx-auto px-4 pb-6 min-h-full flex flex-col justify-end">
+      <div className="max-w-3xl mx-auto px-4 pb-6">
         {messages.map((msg, i) => (
           <div key={i}>
             {i === lastUserIndex && <div ref={latestUserRef} />}
@@ -264,13 +274,15 @@ export function MessageList({
 
             {/* Persistent logo — mt-3 matches ChatMessage assistant layout */}
             <div className="flex justify-start mt-3">
-              <AnimatedLogo logoSrc={logoSrc} phase={logoPhase} size={28} />
+              <AnimatedLogo logoSrc={activeLogoSrc} phase={logoPhase} size={28} />
             </div>
           </div>
         )}
 
-        {/* Bottom anchor for scroll-to-bottom */}
-        <div ref={bottomAnchorRef} aria-hidden="true" />
+        {/* Spacer — enough so the latest user message stays at top even after
+            the active area (129px) is replaced by the shorter committed ChatMessage (~65px).
+            80dvh provides ≥80px buffer on small viewports, absorbing the ~64px height drop. */}
+        <div ref={spacerRef} className="h-[80dvh]" />
       </div>
     </div>
   );

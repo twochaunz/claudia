@@ -57,10 +57,9 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
         </button>
         {expanded && (
           <div
-            className="mt-2 rounded-xl px-4 py-3 text-[14px] leading-relaxed border-l-2"
+            className="mt-2 rounded-xl px-4 py-3 text-[14px] leading-relaxed"
             style={{
               backgroundColor: "var(--thinking-bg)",
-              borderLeftColor: "var(--accent-orange)",
               color: "var(--text-secondary)",
             }}
           >
