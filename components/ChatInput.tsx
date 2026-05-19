@@ -44,7 +44,10 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
 
   const focusTextareaFromBox = (target: EventTarget | null) => {
     if (disabled) return;
-    if (target instanceof HTMLElement && target.closest("button")) return;
+    if (
+      target instanceof HTMLElement &&
+      (target.closest("button") || target === textareaRef.current)
+    ) return;
     textareaRef.current?.focus();
   };
 
