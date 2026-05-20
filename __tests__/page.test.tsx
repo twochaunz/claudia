@@ -85,7 +85,7 @@ describe("Home (Chat Page)", () => {
     jest.useRealTimers();
   });
 
-  it("disables input during all active phases and re-enables after cycle", async () => {
+  it("keeps input focusable but read-only during all active phases and writable after cycle", async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<Home />);
@@ -96,7 +96,9 @@ describe("Home (Chat Page)", () => {
 
     // Chat view textarea (compact input)
     const chatTextarea = screen.getByPlaceholderText("Reply...");
-    expect(chatTextarea).toBeDisabled();
+    expect(chatTextarea).not.toBeDisabled();
+    expect(chatTextarea).toHaveAttribute("readonly");
+    expect(chatTextarea).toHaveAttribute("aria-disabled", "true");
 
     // Advance past scroll fallback (1000ms)
     await act(async () => { jest.advanceTimersByTime(1000); });
@@ -104,8 +106,10 @@ describe("Home (Chat Page)", () => {
     // Advance past max thinking time (capped at 12s)
     await act(async () => { jest.advanceTimersByTime(13000); });
 
-    // Still disabled — thinking just ended, transitioning phase starting
-    expect(chatTextarea).toBeDisabled();
+    // Still read-only — thinking just ended, transitioning phase starting
+    expect(chatTextarea).not.toBeDisabled();
+    expect(chatTextarea).toHaveAttribute("readonly");
+    expect(chatTextarea).toHaveAttribute("aria-disabled", "true");
 
     // Advance past transitioning phase (250ms)
     await act(async () => { jest.advanceTimersByTime(250); });
@@ -116,8 +120,10 @@ describe("Home (Chat Page)", () => {
     // Advance past settled → settling (500ms, then immediate commit)
     await act(async () => { jest.advanceTimersByTime(500); });
 
-    // After cycle completes, input should be re-enabled
+    // After cycle completes, input should be writable again
     expect(chatTextarea).not.toBeDisabled();
+    expect(chatTextarea).not.toHaveAttribute("readonly");
+    expect(chatTextarea).toHaveAttribute("aria-disabled", "false");
 
     jest.useRealTimers();
   });

@@ -43,9 +43,21 @@ describe("ChatInput", () => {
     expect(textarea).toHaveValue("");
   });
 
-  it("disables textarea when disabled prop is true", () => {
+  it("keeps textarea focusable but read-only when disabled prop is true", () => {
     render(<ChatInput {...defaultProps} disabled={true} />);
-    expect(screen.getByPlaceholderText("Reply...")).toBeDisabled();
+    const textarea = screen.getByPlaceholderText("Reply...");
+    expect(textarea).not.toBeDisabled();
+    expect(textarea).toHaveAttribute("readonly");
+    expect(textarea).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("ignores textarea changes when disabled prop is true", () => {
+    render(<ChatInput {...defaultProps} disabled={true} />);
+    const textarea = screen.getByPlaceholderText("Reply...");
+
+    fireEvent.change(textarea, { target: { value: "blocked" } });
+
+    expect(textarea).toHaveValue("");
   });
 
   it("sends on Enter key press", async () => {

@@ -76,9 +76,12 @@ export function ChatInput({ onSend, disabled, persona, onPersonaChange, isLandin
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            if (!disabled) setValue(e.target.value);
+          }}
           onKeyDown={handleKeyDown}
-          disabled={disabled}
+          readOnly={disabled}
+          aria-disabled={disabled}
           placeholder={placeholder}
           enterKeyHint="send"
           rows={isLanding ? 4 : 1}
