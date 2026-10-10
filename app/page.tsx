@@ -50,15 +50,18 @@ export default function Home() {
           className="flex-1 min-h-0 flex flex-col items-center justify-end overflow-hidden"
         >
           <div className="w-full max-w-3xl mx-auto px-4">
-            <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="flex items-center justify-center gap-3 mb-5">
+              {/* Static at rest. A tap plays a short one-off animation
+                  (Claudia winks, Consuela does her stop-motion); nothing
+                  loops while the page is idle. */}
               <AnimatedLogo
                 logoSrc={logoSrc}
-                phase={persona === "consuela" ? "thinking" : "settled"}
-                size={persona === "consuela" ? 44 : 56}
+                phase="settled"
+                size={persona === "consuela" ? 40 : 48}
                 onClick={() => {}}
               />
               <h1
-                className="text-[40px] font-normal"
+                className="text-[32px] font-normal"
                 style={{ color: "var(--text-primary)" }}
               >
                 {displayName}

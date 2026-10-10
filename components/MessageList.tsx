@@ -69,7 +69,9 @@ export function MessageList({
     const delta =
       anchor.getBoundingClientRect().top -
       container.getBoundingClientRect().top;
-    const target = Math.max(0, container.scrollTop + delta - headerH);
+    // Leave a little air under the header so the bubble's top edge reads
+    // as its own, not as touching the chrome.
+    const target = Math.max(0, container.scrollTop + delta - headerH - 8);
 
     const reduced =
       typeof window !== "undefined" &&
@@ -107,23 +109,15 @@ export function MessageList({
     >
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 flex items-center justify-center px-4 pt-3 pb-3"
+        className="sticky top-0 z-20 flex items-center justify-center px-4 py-3"
         style={{
-          // Opaque: the previous gradient let the logo of the message that
-          // just scrolled under the header bleed through as a ghost. The
-          // soft edge now lives in the strip below, outside the header's
-          // own box, so nothing can show through the title row.
+          // Solid, with no fade below it. A fade (gradient header earlier,
+          // then a gradient strip under it) softened the top edge of the
+          // user bubble pinned beneath the header — that is the "blended in"
+          // border. claude.ai's header is a hard edge; so is this one.
           backgroundColor: "var(--bg-primary)",
         }}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 top-full h-4"
-          style={{
-            background:
-              "linear-gradient(to bottom, var(--bg-primary), transparent)",
-          }}
-        />
         <button
           type="button"
           className="flex items-center gap-2 cursor-pointer"
@@ -144,10 +138,10 @@ export function MessageList({
           <AnimatedLogo
             logoSrc={logoSrc}
             phase="settled"
-            size={logoSrc.includes("consuela") ? 26 : 32}
+            size={logoSrc.includes("consuela") ? 22 : 26}
           />
           <span
-            className="text-[24px] font-normal"
+            className="text-[18px] font-normal"
             style={{ color: "var(--text-primary)" }}
           >
             {displayName}
@@ -155,7 +149,7 @@ export function MessageList({
         </button>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pb-6">
+      <div className="max-w-3xl mx-auto px-4 pb-6 pt-2">
         {before.map((msg, i) => (
           <ChatMessage
             key={i}

@@ -153,14 +153,15 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
 
   // Thinking classes per persona
   const claudiaThinkingClass = !isConsuela && phase === "thinking" ? "claudia-thinking" : winking && !isConsuela ? "claudia-wink" : "";
-  const consuelaBodyClass = isConsuela && phase === "thinking" ? "consuela-body-thinking" : "";
-  const consuelaGlassesClass = isConsuela && phase === "thinking" ? "consuela-glasses-thinking" : "";
+  // Consuela's stop-motion plays while thinking, or as a one-off on tap
+  // (`winking` doubles as the tap flag for both personas).
+  const consuelaActive = isConsuela && (phase === "thinking" || winking);
+  const consuelaBodyClass = consuelaActive ? "consuela-body-thinking" : "";
+  const consuelaGlassesClass = consuelaActive ? "consuela-glasses-thinking" : "";
 
   const handleClick = () => {
     if (!onClick) return;
-    if (!isConsuela) {
-      setWinking(true);
-    }
+    setWinking(true);
     onClick();
   };
 
@@ -168,6 +169,9 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
   // setTimeout fallback for iOS Safari where animationend on SVG is unreliable.
   const winkTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const handleAnimationEnd = () => {
+    // Consuela's tap animation is an infinite loop cut off by the timer
+    // below; only Claudia's finite wink ends on its own.
+    if (isConsuela) return;
     clearTimeout(winkTimerRef.current);
     setWinking(false);
   };

@@ -29,7 +29,7 @@ export function ModelSelector({ persona, onPersonaChange }: ModelSelectorProps) 
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 text-[14px] font-medium px-3 py-2 rounded-lg transition-colors cursor-pointer bg-transparent border-none active:opacity-70"
+        className="flex items-center gap-1 h-8 text-[14px] font-medium px-2.5 rounded-lg transition-colors cursor-pointer bg-transparent border-none active:opacity-70 font-sans-input"
         style={{ color: "var(--text-secondary)" }}
       >
         {displayName}

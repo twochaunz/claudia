@@ -34,8 +34,8 @@ interface ChatInputProps {
  */
 /** One 16px line at leading-relaxed (1.625) is 26px. */
 const REPLY_MIN_HEIGHT = 26;
-/** Landing composer shows roughly three empty lines, like claude.ai. */
-const LANDING_MIN_HEIGHT = 78;
+/** Landing composer shows two empty lines, like claude.ai's. */
+const LANDING_MIN_HEIGHT = 52;
 /** Past this the composer scrolls internally instead of growing further. */
 const MAX_HEIGHT = 208;
 
@@ -108,7 +108,7 @@ export function ChatInput({
         flickered the keyboard.
       */}
       <label
-        className="flex flex-col rounded-2xl border px-4 py-3"
+        className="flex flex-col rounded-2xl border px-4 pt-3 pb-2.5"
         style={{
           backgroundColor: "var(--input-bg)",
           borderColor: "var(--input-border)",
@@ -146,9 +146,8 @@ export function ChatInput({
             cursor: "text",
           }}
         />
-        <div className="flex items-center justify-between mt-2">
-          <div />
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end mt-2">
+          <div className="flex items-center gap-1.5">
             <ModelSelector persona={persona} onPersonaChange={onPersonaChange} />
             <button
               type="button"
@@ -160,7 +159,7 @@ export function ChatInput({
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleSend}
               aria-label="Send"
-              className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg cursor-pointer border-none active:opacity-80"
+              className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg cursor-pointer border-none active:opacity-80"
               style={{
                 backgroundColor: hasText
                   ? "var(--accent-orange)"

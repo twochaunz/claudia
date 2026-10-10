@@ -11,7 +11,7 @@ export function ChatMessage({ role, content, logoSrc = "/claude-logo.svg" }: Cha
     return (
       <div className="flex justify-end mb-4 animate-fade-in">
         <div
-          className="max-w-[85%] rounded-3xl px-5 py-3 text-[16px] leading-relaxed whitespace-pre-wrap break-words"
+          className="max-w-[80%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap break-words font-sans-input"
           style={{ backgroundColor: "var(--bg-user-bubble)", color: "var(--text-primary)" }}
         >
           {content}

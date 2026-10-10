@@ -256,3 +256,21 @@ describe("Home (Chat Page)", () => {
     jest.useRealTimers();
   });
 });
+
+describe("landing logo", () => {
+  it("stays static for Consuela until tapped", async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    // Switch persona via the model selector.
+    await user.click(screen.getByRole("button", { name: /^Claudia$/ }));
+    await user.click(screen.getByText("Consuela", { selector: ".font-medium" }));
+
+    const hero = screen.getByRole("heading", { name: "Consuela" }).parentElement!;
+    expect(hero.querySelector(".consuela-body-thinking")).toBeNull();
+
+    // A tap plays the one-off stop-motion.
+    await user.click(hero.querySelector("button")!);
+    expect(hero.querySelector(".consuela-body-thinking")).not.toBeNull();
+  });
+});
