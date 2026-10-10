@@ -91,7 +91,7 @@ export function TypedResponse({ text, onComplete, duration = 1200 }: TypedRespon
 
   return (
     <div
-      className="text-[16px] leading-relaxed"
+      className="text-[16px] leading-relaxed whitespace-pre-wrap break-words"
       style={{ color: "var(--text-primary)" }}
       aria-label={text}
     >

@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, type KeyboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useLayoutEffect,
+  type KeyboardEvent,
+} from "react";
 import { ModelSelector } from "./ModelSelector";
 import type { Persona } from "./useChatMachine";
 
@@ -26,6 +32,13 @@ interface ChatInputProps {
  * first message" class of bug. `page.tsx` keeps it at a stable position in the
  * child list so React reuses the same DOM node.
  */
+/** One 16px line at leading-relaxed (1.625) is 26px. */
+const REPLY_MIN_HEIGHT = 26;
+/** Landing composer shows roughly three empty lines, like claude.ai. */
+const LANDING_MIN_HEIGHT = 78;
+/** Past this the composer scrolls internally instead of growing further. */
+const MAX_HEIGHT = 208;
+
 export function ChatInput({
   onSend,
   persona,
@@ -34,6 +47,21 @@ export function ChatInput({
 }: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Claude's composer grows with its content instead of scrolling a single
+  // line, up to a cap, then scrolls internally. The height is measured from
+  // scrollHeight in a layout effect so the frame that commits the new value
+  // already has the right height — doing it in a plain effect paints one
+  // frame at the old height first, which reads as a flicker on every newline.
+  const minHeight = isLanding ? LANDING_MIN_HEIGHT : REPLY_MIN_HEIGHT;
+  useLayoutEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(Math.max(el.scrollHeight, minHeight), MAX_HEIGHT);
+    el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > MAX_HEIGHT ? "auto" : "hidden";
+  }, [value, minHeight]);
 
   // Autofocus once, on the landing view only, and only where a keyboard won't
   // be forced open over the content. Touch devices are left alone: iOS ignores
@@ -102,8 +130,15 @@ export function ChatInput({
             color: "var(--text-primary)",
             // 16px font size is load-bearing: anything smaller makes iOS Safari
             // zoom the viewport on focus, which desyncs the visual viewport.
-            minHeight: isLanding ? "100px" : "44px",
+            minHeight: `${minHeight}px`,
+            maxHeight: `${MAX_HEIGHT}px`,
+            // Only the landing → chat shrink is animated; content-driven
+            // growth is applied synchronously by the layout effect above.
             transition: "min-height 260ms cubic-bezier(0.4, 0, 0.2, 1)",
+            padding: 0,
+            margin: 0,
+            border: "none",
+            display: "block",
             touchAction: "manipulation",
             WebkitAppearance: "none",
             appearance: "none",

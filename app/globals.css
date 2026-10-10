@@ -61,6 +61,7 @@ html {
   /* Set by useAppHeight() from visualViewport.height. The fallback only
      applies for the first paint before hydration. */
   --app-h: 100dvh;
+  --app-top: 0px;
 }
 
 body {

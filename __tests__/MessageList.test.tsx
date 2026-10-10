@@ -82,6 +82,20 @@ describe("MessageList", () => {
     expect(screen.getByTestId("thinking-wrapper")).toHaveStyle({ opacity: 0 });
   });
 
+  it("does not mount the reveal before the typing phase", () => {
+    render(
+      <MessageList
+        {...props({
+          messages: [userMsg],
+          phase: "transitioning",
+          pending: "si papi",
+          cycleId: 1,
+        })}
+      />,
+    );
+    expect(screen.queryByLabelText("si papi")).not.toBeInTheDocument();
+  });
+
   it("reveals the response during the typing phase", () => {
     render(
       <MessageList

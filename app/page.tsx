@@ -37,6 +37,9 @@ export default function Home() {
         // --app-h tracks visualViewport.height, so this column ends exactly at
         // the top of the software keyboard instead of running underneath it.
         height: "var(--app-h, 100dvh)",
+        // --app-top is iOS Safari's keyboard pan (visualViewport.offsetTop);
+        // following it keeps the column inside what is actually visible.
+        transform: "translateY(var(--app-top, 0px))",
         backgroundColor: "var(--bg-primary)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}

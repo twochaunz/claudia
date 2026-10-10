@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
+import { useEffect, useLayoutEffect, type RefObject } from "react";
 
 /**
- * Publishes the *visual* viewport height as the `--app-h` CSS custom property.
+ * Publishes the *visual* viewport geometry as CSS custom properties:
+ * `--app-h` (height) and `--app-top` (offset from the layout viewport).
  *
  * Why not `100dvh`: on iOS Safari the dynamic viewport does NOT shrink when the
  * software keyboard opens — the keyboard is composited over the layout viewport.
@@ -26,6 +27,13 @@ export function useAppHeight() {
       frame = 0;
       const h = vv ? vv.height : window.innerHeight;
       root.style.setProperty("--app-h", `${h}px`);
+      // When iOS opens the keyboard it can pan the visual viewport down to
+      // "reveal" the focused field even though the body is fixed. That pan
+      // shows up as offsetTop, not scrollY, so the column follows it with a
+      // translate — otherwise the header slides off the top of the screen
+      // and the composer floats mid-page. Zero everywhere else.
+      const top = vv ? Math.max(0, vv.offsetTop) : 0;
+      root.style.setProperty("--app-top", `${top}px`);
       // iOS can leave the layout viewport scrolled after the keyboard closes,
       // which shifts the fixed body out of view. Pin it back.
       if (window.scrollY !== 0) window.scrollTo(0, 0);
@@ -80,7 +88,11 @@ export function useHeightVar(
    */
   deps: unknown[] = [],
 ) {
-  useEffect(() => {
+  // Layout effect so the variable exists before the first paint. The scroll
+  // anchor's min-height depends on `--list-h`; with a plain effect the first
+  // message's scroll target was computed against the fallback height, then
+  // the real value landed a frame later and shortened the scroll range.
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const root = document.documentElement;

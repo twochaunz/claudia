@@ -13,16 +13,17 @@ const PAST_SETTLE = 600;
 /**
  * Advance through a full send→commit cycle.
  *
- * The three `act` calls are load-bearing, not stylistic. Timers are created by
+ * The four `act` calls are load-bearing, not stylistic. Timers are created by
  * effects, so a timer only exists once React has committed the render that
  * schedules it — but `advanceTimersByTime` fires everything synchronously
  * before that commit happens. Collapsing these into one call therefore leaves
  * the cycle parked in `settled` with the response still uncommitted:
  *
- *   act 1 → scrolling → thinking → transitioning (TypedResponse mounts here,
- *           so its word interval does not exist until this act returns)
- *   act 2 → transitioning → typing, word reveal finishes → settled
- *   act 3 → settled → idle, which is where the response is appended to
+ *   act 1 → scrolling → thinking → transitioning
+ *   act 2 → transitioning → typing (TypedResponse mounts here, so its word
+ *           interval does not exist until this act returns)
+ *   act 3 → word reveal finishes → settled
+ *   act 4 → settled → idle, which is where the response is appended to
  *           messages[] and rendered as a plain committed message
  */
 async function runCycle() {
@@ -30,7 +31,10 @@ async function runCycle() {
     jest.advanceTimersByTime(PAST_SCROLL + PAST_RESPONSE);
   });
   await act(async () => {
-    jest.advanceTimersByTime(PAST_TRANSITION + PAST_TYPING);
+    jest.advanceTimersByTime(PAST_TRANSITION);
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(PAST_TYPING);
   });
   await act(async () => {
     jest.advanceTimersByTime(PAST_SETTLE);
@@ -189,6 +193,46 @@ describe("Home (Chat Page)", () => {
     assertWritable();
 
     jest.useRealTimers();
+  });
+
+  it("commits the response under prefers-reduced-motion (instant reveal)", async () => {
+    // Regression: with reduced motion TypedResponse completes synchronously on
+    // mount. It used to mount during `transitioning`, where typingDone is
+    // ignored, so the cycle never left `typing` and nothing was committed.
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = jest.fn().mockImplementation((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      onchange: null,
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    }));
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Home />);
+
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await runCycle();
+
+    // Committed: the plain ChatMessage renders the text, no reveal wrapper.
+    expect(screen.getByText("si papi")).toBeInTheDocument();
+    expect(screen.queryByLabelText("si papi")).not.toBeInTheDocument();
+
+    // And the next cycle still works.
+    await user.type(screen.getByPlaceholderText("Reply..."), "again");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await runCycle();
+    expect(screen.getAllByText("si papi")).toHaveLength(2);
+
+    jest.useRealTimers();
+    window.matchMedia = originalMatchMedia;
   });
 
   it("returns to the landing view when the header logo is clicked", async () => {

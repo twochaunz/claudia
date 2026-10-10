@@ -24,3 +24,12 @@ describe("ChatMessage", () => {
     expect(svg).not.toBeInTheDocument();
   });
 });
+
+describe("ChatMessage line breaks", () => {
+  it("preserves newlines typed with Shift+Enter in user messages", () => {
+    render(<ChatMessage role="user" content={"line one\nline two"} />);
+    const bubble = screen.getByText(/line one/);
+    expect(bubble).toHaveClass("whitespace-pre-wrap");
+    expect(bubble.textContent).toBe("line one\nline two");
+  });
+});

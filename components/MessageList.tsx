@@ -107,12 +107,23 @@ export function MessageList({
     >
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 flex items-center justify-center px-4 pt-3 pb-5"
+        className="sticky top-0 z-20 flex items-center justify-center px-4 pt-3 pb-3"
         style={{
-          background:
-            "linear-gradient(to bottom, var(--bg-primary) 55%, transparent 100%)",
+          // Opaque: the previous gradient let the logo of the message that
+          // just scrolled under the header bleed through as a ghost. The
+          // soft edge now lives in the strip below, outside the header's
+          // own box, so nothing can show through the title row.
+          backgroundColor: "var(--bg-primary)",
         }}
       >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-full h-4"
+          style={{
+            background:
+              "linear-gradient(to bottom, var(--bg-primary), transparent)",
+          }}
+        />
         <button
           type="button"
           className="flex items-center gap-2 cursor-pointer"
@@ -214,8 +225,15 @@ export function MessageList({
                     minHeight: holdSpace ? "var(--thinking-h, 0px)" : 0,
                   }}
                 >
-                  {pending !== null && (
-                    /* Keyed by cycle: Claudia's response is always the same
+                  {responseVisible && pending !== null && (
+                    /* Mounted only once the phase reaches `typing`. `pending`
+                       is set a phase earlier, during `transitioning`, and a
+                       reveal that finishes instantly (reduced motion, or a
+                       one-word reply) would fire onTypingDone while the
+                       machine still ignores it — leaving the cycle parked in
+                       `typing` forever.
+
+                       Keyed by cycle: Claudia's response is always the same
                        string, and without a key an identical text prop would
                        not restart the reveal effect on the next message. */
                     <TypedResponse
