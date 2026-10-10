@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "next": "16.1.6",

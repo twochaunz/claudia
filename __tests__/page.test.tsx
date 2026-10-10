@@ -2,44 +2,89 @@ import { render, screen, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
 
-// Mock next/image
-jest.mock("next/image", () => ({
-  __esModule: true,
-  default: (props: any) => <img {...props} />,
-}));
+// Phase durations from useChatMachine: scrolling 300ms, response delay 2–5s,
+// transitioning 220ms, typing ~1200ms, settled 500ms.
+const PAST_SCROLL = 300;
+const PAST_RESPONSE = 5100;
+const PAST_TRANSITION = 250;
+const PAST_TYPING = 2000;
+const PAST_SETTLE = 600;
 
-// Mock scrollIntoView
-Element.prototype.scrollIntoView = jest.fn();
+/**
+ * Advance through a full send→commit cycle.
+ *
+ * The three `act` calls are load-bearing, not stylistic. Timers are created by
+ * effects, so a timer only exists once React has committed the render that
+ * schedules it — but `advanceTimersByTime` fires everything synchronously
+ * before that commit happens. Collapsing these into one call therefore leaves
+ * the cycle parked in `settled` with the response still uncommitted:
+ *
+ *   act 1 → scrolling → thinking → transitioning (TypedResponse mounts here,
+ *           so its word interval does not exist until this act returns)
+ *   act 2 → transitioning → typing, word reveal finishes → settled
+ *   act 3 → settled → idle, which is where the response is appended to
+ *           messages[] and rendered as a plain committed message
+ */
+async function runCycle() {
+  await act(async () => {
+    jest.advanceTimersByTime(PAST_SCROLL + PAST_RESPONSE);
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(PAST_TRANSITION + PAST_TYPING);
+  });
+  await act(async () => {
+    jest.advanceTimersByTime(PAST_SETTLE);
+  });
+}
 
 describe("Home (Chat Page)", () => {
   it("renders the initial empty state", () => {
     render(<Home />);
-    expect(screen.getByRole("heading", { name: "Claudia" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Claudia" }),
+    ).toBeInTheDocument();
   });
 
   it("shows user message after sending", async () => {
     const user = userEvent.setup();
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How are you doing today?");
-    await user.type(textarea, "what is 2+2?");
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "what is 2+2?",
+    );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(screen.getByText("what is 2+2?")).toBeInTheDocument();
   });
 
-  it("shows thinking indicator after scroll completes", async () => {
+  it("reuses the same textarea element across the landing → chat transition", async () => {
+    const user = userEvent.setup();
+    render(<Home />);
+
+    const landing = screen.getByPlaceholderText("How are you doing today?");
+    await user.type(landing, "hello");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    const reply = screen.getByPlaceholderText("Reply...");
+    // Identity check: if React tore down and rebuilt the input, iOS would drop
+    // the keyboard and refuse to reopen it without a new gesture.
+    expect(reply).toBe(landing);
+  });
+
+  it("shows thinking indicator after the scroll phase", async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How are you doing today?");
-    await user.type(textarea, "hello");
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "hello",
+    );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    // Advance past scroll fallback (1000ms) to reach thinking phase
     await act(async () => {
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(PAST_SCROLL);
     });
 
     expect(screen.getByText("Thinking")).toBeInTheDocument();
@@ -51,80 +96,119 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How are you doing today?");
-    await user.type(textarea, "hello");
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "hello",
+    );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    // Advance past scroll fallback (1000ms)
-    await act(async () => {
-      jest.advanceTimersByTime(1000);
-    });
-
-    // Advance past max thinking time (capped at 12s)
-    await act(async () => {
-      jest.advanceTimersByTime(13000);
-    });
-
-    // Advance past transitioning phase (250ms)
-    await act(async () => {
-      jest.advanceTimersByTime(250);
-    });
-
-    // Advance past typing animation (~1200ms for 2 words + buffer)
-    await act(async () => {
-      jest.advanceTimersByTime(3000);
-    });
-
-    // Advance past settled → settling (500ms, then immediate commit)
-    await act(async () => {
-      jest.advanceTimersByTime(500);
-    });
+    await runCycle();
 
     expect(screen.getByText("si papi")).toBeInTheDocument();
-
     jest.useRealTimers();
   });
 
-  it("keeps input focusable but read-only during all active phases and writable after cycle", async () => {
+  it("commits a second response with identical text", async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(<Home />);
 
-    const textarea = screen.getByPlaceholderText("How are you doing today?");
-    await user.type(textarea, "hello");
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await runCycle();
+
+    await user.type(screen.getByPlaceholderText("Reply..."), "again");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await runCycle();
+
+    // Both cycles must complete even though Claudia's reply never varies.
+    expect(screen.getAllByText("si papi")).toHaveLength(2);
+    jest.useRealTimers();
+  });
+
+  it("accepts a send while a response is still in flight", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Home />);
+
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "first",
+    );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    // Chat view textarea (compact input)
-    const chatTextarea = screen.getByPlaceholderText("Reply...");
-    expect(chatTextarea).not.toBeDisabled();
-    expect(chatTextarea).toHaveAttribute("readonly");
-    expect(chatTextarea).toHaveAttribute("aria-disabled", "true");
+    // Interrupt mid-thinking.
+    await act(async () => {
+      jest.advanceTimersByTime(PAST_SCROLL + 500);
+    });
 
-    // Advance past scroll fallback (1000ms)
-    await act(async () => { jest.advanceTimersByTime(1000); });
+    await user.type(screen.getByPlaceholderText("Reply..."), "second");
+    await user.click(screen.getByRole("button", { name: /send/i }));
 
-    // Advance past max thinking time (capped at 12s)
-    await act(async () => { jest.advanceTimersByTime(13000); });
+    expect(screen.getByText("second")).toBeInTheDocument();
 
-    // Still read-only — thinking just ended, transitioning phase starting
-    expect(chatTextarea).not.toBeDisabled();
-    expect(chatTextarea).toHaveAttribute("readonly");
-    expect(chatTextarea).toHaveAttribute("aria-disabled", "true");
+    await runCycle();
+    expect(screen.getByText("si papi")).toBeInTheDocument();
+    jest.useRealTimers();
+  });
 
-    // Advance past transitioning phase (250ms)
-    await act(async () => { jest.advanceTimersByTime(250); });
+  it("keeps the input editable during every phase", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Home />);
 
-    // Advance past typing animation (~1200ms for 2 words + buffer)
-    await act(async () => { jest.advanceTimersByTime(3000); });
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: /send/i }));
 
-    // Advance past settled → settling (500ms, then immediate commit)
-    await act(async () => { jest.advanceTimersByTime(500); });
+    const textarea = screen.getByPlaceholderText("Reply...");
+    const assertWritable = () => {
+      expect(textarea).not.toBeDisabled();
+      expect(textarea).not.toHaveAttribute("readonly");
+      expect(textarea).not.toHaveAttribute("aria-disabled");
+      expect(screen.getByRole("button", { name: /send/i })).not.toBeDisabled();
+    };
 
-    // After cycle completes, input should be writable again
-    expect(chatTextarea).not.toBeDisabled();
-    expect(chatTextarea).not.toHaveAttribute("readonly");
-    expect(chatTextarea).toHaveAttribute("aria-disabled", "false");
+    assertWritable();
+    await act(async () => {
+      jest.advanceTimersByTime(PAST_SCROLL + PAST_RESPONSE);
+    });
+    assertWritable();
+    await act(async () => {
+      jest.advanceTimersByTime(PAST_TRANSITION + PAST_TYPING);
+    });
+    assertWritable();
+    await act(async () => {
+      jest.advanceTimersByTime(PAST_SETTLE);
+    });
+    assertWritable();
 
+    jest.useRealTimers();
+  });
+
+  it("returns to the landing view when the header logo is clicked", async () => {
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<Home />);
+
+    await user.type(
+      screen.getByPlaceholderText("How are you doing today?"),
+      "hello",
+    );
+    await user.click(screen.getByRole("button", { name: /send/i }));
+    await runCycle();
+
+    await user.click(screen.getByRole("button", { name: /new chat/i }));
+
+    expect(
+      screen.getByRole("heading", { name: "Claudia" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("hello")).not.toBeInTheDocument();
     jest.useRealTimers();
   });
 });

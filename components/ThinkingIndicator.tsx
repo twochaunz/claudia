@@ -10,12 +10,12 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
   const [elapsed, setElapsed] = useState(0);
   const [expanded, setExpanded] = useState(true);
 
+  // No state resetting here: the parent keys this component by cycle, so each
+  // new message mounts a fresh instance already at 0 and expanded. Resetting
+  // from inside the effect instead caused an extra render pass on every
+  // visibility flip.
   useEffect(() => {
-    if (!isVisible) {
-      setElapsed(0);
-      setExpanded(true);
-      return;
-    }
+    if (!isVisible) return;
     const interval = setInterval(() => {
       setElapsed((prev) => prev + 1);
     }, 1000);
