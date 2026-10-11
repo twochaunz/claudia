@@ -10,12 +10,12 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
   const [elapsed, setElapsed] = useState(0);
   const [expanded, setExpanded] = useState(true);
 
+  // No state resetting here: the parent keys this component by cycle, so each
+  // new message mounts a fresh instance already at 0 and expanded. Resetting
+  // from inside the effect instead caused an extra render pass on every
+  // visibility flip.
   useEffect(() => {
-    if (!isVisible) {
-      setElapsed(0);
-      setExpanded(true);
-      return;
-    }
+    if (!isVisible) return;
     const interval = setInterval(() => {
       setElapsed((prev) => prev + 1);
     }, 1000);
@@ -28,7 +28,7 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
         <button
           onClick={() => setExpanded(!expanded)}
           className="flex items-center gap-2 text-[14px] font-medium cursor-pointer bg-transparent border-none p-0"
-          style={{ color: "var(--accent-orange)" }}
+          style={{ color: "var(--text-secondary)" }}
         >
           <svg
             width="12"
@@ -47,9 +47,9 @@ export function ThinkingIndicator({ isVisible }: ThinkingIndicatorProps) {
           </svg>
           Thinking
           <span className="flex gap-[2px]">
-            <span className="thinking-dot w-1 h-1 rounded-full inline-block" style={{ backgroundColor: "var(--accent-orange)" }} />
-            <span className="thinking-dot w-1 h-1 rounded-full inline-block" style={{ backgroundColor: "var(--accent-orange)" }} />
-            <span className="thinking-dot w-1 h-1 rounded-full inline-block" style={{ backgroundColor: "var(--accent-orange)" }} />
+            <span className="thinking-dot w-1 h-1 rounded-full inline-block" style={{ backgroundColor: "var(--text-secondary)" }} />
+            <span className="thinking-dot w-1 h-1 rounded-full inline-block" style={{ backgroundColor: "var(--text-secondary)" }} />
+            <span className="thinking-dot w-1 h-1 rounded-full inline-block" style={{ backgroundColor: "var(--text-secondary)" }} />
           </span>
           <span style={{ color: "var(--text-secondary)" }} className="font-normal">
             {elapsed}s

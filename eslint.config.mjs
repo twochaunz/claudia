@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static-export output copied for deployment. ESLint does not read
+    // .gitignore, so this needs listing here too or `npm run lint` reports
+    // ~1800 problems in minified bundles.
+    "out_deploy/**",
   ]),
 ]);
 

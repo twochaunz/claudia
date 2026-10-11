@@ -1,146 +1,110 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
 import { MessageList } from "@/components/MessageList";
 import { ChatInput } from "@/components/ChatInput";
 import { AnimatedLogo } from "@/components/AnimatedLogo";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  logoSrc?: string;
-}
-
-type Persona = "claudia" | "consuela";
-
-const CONSUELA_QUOTES = [
-  "No, no, no",
-  "No... no... no... I stay",
-  "Oh, no... no",
-  "No... no... Mr. Superman no home",
-  "No... no... no is... no",
-  "No... no... afuera",
-  "I... nooo... no",
-  "No... I keep job",
-];
-
-function getResponse(persona: Persona): string {
-  if (persona === "consuela") {
-    return CONSUELA_QUOTES[Math.floor(Math.random() * CONSUELA_QUOTES.length)];
-  }
-  return "si papi";
-}
+import { useChatMachine, logoFor } from "@/components/useChatMachine";
+import { useAppHeight } from "@/components/useViewport";
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isThinking, setIsThinking] = useState(false);
-  const [pendingResponse, setPendingResponse] = useState<string | null>(null);
-  const [persona, setPersona] = useState<Persona>("claudia");
+  useAppHeight();
 
-  // Refs to avoid stale closures in handleTypingComplete
-  const pendingResponseRef = useRef<string | null>(null);
-  const pendingLogoRef = useRef<string>("/claude-logo.svg");
-  const responseTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  useEffect(() => { pendingResponseRef.current = pendingResponse; }, [pendingResponse]);
-
-  const handleSend = useCallback((text: string) => {
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setIsThinking(true);
-    pendingLogoRef.current = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
-
-    // Left-skewed distribution: 2s–5s, favoring shorter delays
-    const delay = 2000 + Math.pow(Math.random(), 2) * 3000;
-    responseTimerRef.current = setTimeout(() => {
-      setIsThinking(false);
-      setPendingResponse(getResponse(persona));
-    }, delay);
-  }, [persona]);
-
-  // Stable callback identity — reads pendingResponse from ref, not closure
-  const handleTypingComplete = useCallback(() => {
-    const response = pendingResponseRef.current;
-    if (response !== null) {
-      setMessages((prev) => [...prev, { role: "assistant", content: response, logoSrc: pendingLogoRef.current }]);
-    }
-    setPendingResponse(null);
-  }, []);
-
-  const handlePersonaChange = (newPersona: Persona) => {
-    setPersona(newPersona);
-  };
-
-  const handleReset = useCallback(() => {
-    setMessages([]);
-    setIsThinking(false);
-    setPendingResponse(null);
-    clearTimeout(responseTimerRef.current);
-  }, []);
+  const { state, send, setPersona, reset, typingDone } = useChatMachine();
+  const { messages, phase, pending, cycleId, persona, pendingLogo } = state;
 
   const displayName = persona === "claudia" ? "Claudia" : "Consuela";
-  const logoSrc = persona === "claudia" ? "/claude-logo.svg" : "/consuela-logo.svg";
-  const hasMessages = messages.length > 0 || isThinking || pendingResponse !== null;
+  const logoSrc = logoFor(persona);
+  const isLanding = messages.length === 0 && phase === "idle";
 
-  if (!hasMessages) {
-    return (
-      <div
-        className="grid place-items-center h-dvh overflow-hidden"
-        style={{ backgroundColor: "var(--bg-primary)" }}
-      >
-        <div className="w-full max-w-3xl px-4">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <AnimatedLogo logoSrc={logoSrc} phase={persona === "consuela" ? "thinking" : "settled"} size={logoSrc.includes("consuela") ? 44 : 56} onClick={() => {}} />
-            <h1
-              className="text-[40px] font-normal"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {displayName}
-            </h1>
-          </div>
+  /*
+    ONE tree for both views.
 
-          <ChatInput
-            onSend={handleSend}
-            disabled={isThinking || pendingResponse !== null}
-            persona={persona}
-            onPersonaChange={handlePersonaChange}
-            isLanding
-          />
+    The previous version had an `if (!hasMessages) return (...)` early return,
+    so sending the first message swapped in a completely different JSX tree.
+    React tore down the landing <textarea> and built a new one — and on iOS,
+    destroying the focused element dismisses the keyboard permanently, since
+    focus() outside a user gesture is ignored. Roughly half the fix commits in
+    this repo's history were attempts to work around that one structural choice.
 
-        </div>
-      </div>
-    );
-  }
-
+    Here the child list is positionally stable: slot 0 swaps between the hero
+    and the message list, but <ChatInput> is always slot 1, so React reuses the
+    same DOM node and focus survives the transition untouched.
+  */
   return (
     <div
-      className="flex flex-col h-dvh min-h-0"
+      className="flex flex-col"
       style={{
+        // --app-h tracks visualViewport.height, so this column ends exactly at
+        // the top of the software keyboard instead of running underneath it.
+        height: "var(--app-h, 100dvh)",
+        // --app-top is iOS Safari's keyboard pan (visualViewport.offsetTop);
+        // following it keeps the column inside what is actually visible.
+        transform: "translateY(var(--app-top, 0px))",
         backgroundColor: "var(--bg-primary)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      <MessageList
-        messages={messages}
-        isThinking={isThinking}
-        pendingResponse={pendingResponse}
-        logoSrc={logoSrc}
-        activeLogoSrc={pendingLogoRef.current}
-        displayName={displayName}
-        onTypingComplete={handleTypingComplete}
-        onReset={handleReset}
-      />
+      {isLanding ? (
+        <div
+          key="hero"
+          className="flex-1 min-h-0 flex flex-col items-center justify-end overflow-hidden"
+        >
+          <div className="w-full max-w-3xl mx-auto px-4">
+            <div className="flex items-center justify-center gap-3 mb-5">
+              {/* Static at rest. A tap plays a short one-off animation
+                  (Claudia winks, Consuela does her stop-motion); nothing
+                  loops while the page is idle. */}
+              <AnimatedLogo
+                logoSrc={logoSrc}
+                phase="settled"
+                size={persona === "consuela" ? 40 : 48}
+                onClick={() => {}}
+              />
+              <h1
+                className="text-[32px] font-normal"
+                style={{ color: "var(--text-primary)" }}
+              >
+                {displayName}
+              </h1>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <MessageList
+          key="list"
+          messages={messages}
+          phase={phase}
+          pending={pending}
+          cycleId={cycleId}
+          logoSrc={logoSrc}
+          pendingLogo={pendingLogo}
+          displayName={displayName}
+          onTypingDone={typingDone}
+          onReset={reset}
+        />
+      )}
 
       <ChatInput
-        onSend={handleSend}
-        disabled={isThinking || pendingResponse !== null}
+        key="input"
+        onSend={send}
         persona={persona}
-        onPersonaChange={handlePersonaChange}
+        onPersonaChange={setPersona}
+        isLanding={isLanding}
       />
+
       <p
-        className="text-center text-[13px] pb-2"
+        key="disclaimer"
+        className="text-center text-[13px] pb-2 flex-shrink-0"
         style={{ color: "var(--text-secondary)" }}
       >
-        Claudia and Consuela can make mistakes.<br className="sm:hidden" /> Please double-check responses.
+        Claudia and Consuela can make mistakes.
+        <br className="sm:hidden" /> Please double-check responses.
       </p>
+
+      {/* Balances the flex-1 above it so the hero + input sit optically centred
+          on the landing view. Rendered after the input, so toggling it cannot
+          disturb the input's position in the child list. */}
+      {isLanding && <div key="balance" className="flex-1 min-h-0" />}
     </div>
   );
 }

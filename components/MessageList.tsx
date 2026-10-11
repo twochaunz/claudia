@@ -1,288 +1,288 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { TypedResponse } from "./TypedResponse";
 import { AnimatedLogo } from "./AnimatedLogo";
+import { useHeightVar } from "./useViewport";
+import type { Message, Phase } from "./useChatMachine";
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  logoSrc?: string;
-}
-
-type Phase = "idle" | "scrolling" | "thinking" | "transitioning" | "typing" | "settled" | "settling";
+/**
+ * Air between the header's bottom edge and the pinned user bubble, and the
+ * padding under the last message. The anchor's reserve is sized from these so
+ * that "scrolled to the very bottom" and "newest message pinned under the
+ * header" are the *same* scroll position — see the anchor block below.
+ */
+const ANCHOR_GAP = 8;
+const LIST_BOTTOM_PAD = 24;
 
 interface MessageListProps {
   messages: Message[];
-  isThinking: boolean;
-  pendingResponse: string | null;
-  logoSrc?: string;
-  activeLogoSrc?: string;
-  displayName?: string;
-  onTypingComplete: () => void;
-  onReset?: () => void;
+  phase: Phase;
+  pending: string | null;
+  cycleId: number;
+  /** Logo of the currently selected persona — used in the header. */
+  logoSrc: string;
+  /** Logo bound to the in-flight response. */
+  pendingLogo: string;
+  displayName: string;
+  onTypingDone: () => void;
+  onReset: () => void;
 }
 
 export function MessageList({
   messages,
-  isThinking,
-  pendingResponse,
-  logoSrc = "/claude-logo.svg",
-  activeLogoSrc = logoSrc,
-  displayName = "Claudia",
-  onTypingComplete,
+  phase,
+  pending,
+  cycleId,
+  logoSrc,
+  pendingLogo,
+  displayName,
+  onTypingDone,
   onReset,
 }: MessageListProps) {
-  const [phase, setPhase] = useState<Phase>("idle");
-  const latestUserRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-  const activeAreaRef = useRef<HTMLDivElement>(null);
-  const spacerRef = useRef<HTMLDivElement>(null);
-  const thinkingContentRef = useRef<HTMLDivElement>(null);
-  const wasSettlingRef = useRef(false);
-  const [thinkingH, setThinkingH] = useState(0);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const thinkingRef = useRef<HTMLDivElement>(null);
 
-  // --- Phase sequencer: react to external prop changes ---
+  // Measured into CSS variables rather than React state. The anchor block sizes
+  // itself from these in plain CSS, so a resize never triggers a render — and
+  // therefore can never interleave with a phase change mid-animation.
+  useHeightVar(scrollRef, "--list-h");
+  useHeightVar(headerRef, "--header-h");
+  // The thinking indicator only exists while a cycle is active, so this one
+  // has to re-attach whenever the active area remounts.
+  useHeightVar(thinkingRef, "--thinking-h", [phase !== "idle"]);
 
-  // idle → scrolling: when isThinking becomes true
-  useEffect(() => {
-    if (isThinking && phase === "idle") {
-      setPhase("scrolling");
-    }
-  }, [isThinking, phase]);
-
-  // scrolling: trigger scroll and wait for completion
-  useEffect(() => {
-    if (phase !== "scrolling") return;
-
-    // Reset spacer to full height so scrollIntoView can push content to top
-    if (spacerRef.current) spacerRef.current.style.height = "";
-
-    // Scroll the latest user message to top
-    if (latestUserRef.current) {
-      latestUserRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    const container = scrollContainerRef.current;
-
-    // Detect scroll idle via debounced scroll events.
-    // scrollend is not supported on iOS Safari, so we use a universal approach.
-    if (container) {
-      let scrollTimer: ReturnType<typeof setTimeout>;
-      const onScroll = () => {
-        clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(() => {
-          container.removeEventListener("scroll", onScroll);
-          setPhase("thinking");
-        }, 150);
-      };
-      container.addEventListener("scroll", onScroll, { passive: true });
-
-      // Fallback if no scroll event fires (content already in view)
-      const fallbackTimer = setTimeout(() => {
-        container.removeEventListener("scroll", onScroll);
-        setPhase("thinking");
-      }, 300);
-
-      return () => {
-        clearTimeout(scrollTimer);
-        clearTimeout(fallbackTimer);
-        container.removeEventListener("scroll", onScroll);
-      };
-    }
-
-    // No container — advance immediately
-    const fallbackTimer = setTimeout(() => setPhase("thinking"), 100);
-    return () => clearTimeout(fallbackTimer);
-  }, [phase]);
-
-  // thinking → transitioning: when pendingResponse arrives
-  useEffect(() => {
-    if (pendingResponse !== null && (phase === "thinking" || phase === "scrolling")) {
-      setPhase("transitioning");
-    }
-  }, [pendingResponse, phase]);
-
-  // transitioning → typing: after thinking fade-out (250ms fallback)
-  useEffect(() => {
-    if (phase !== "transitioning") return;
-    const timer = setTimeout(() => setPhase("typing"), 250);
-    return () => clearTimeout(timer);
-  }, [phase]);
-
-  // settled/settling → scrolling: when a new message cycle starts
-  useEffect(() => {
-    if (isThinking && (phase === "settled" || phase === "settling")) {
-      onTypingComplete();
-      setPhase("scrolling");
-    }
-  }, [isThinking, phase, onTypingComplete]);
-
-  // Edge case: props reset without completing cycle — return to idle.
-  // Excludes "thinking" because iOS WebKit can briefly paint both
-  // isThinking and pendingResponse as falsy between the timer updates.
-  useEffect(() => {
-    if (!isThinking && pendingResponse === null && phase !== "idle" && phase !== "settled" && phase !== "settling" && phase !== "thinking") {
-      setPhase("idle");
-    }
-  }, [isThinking, pendingResponse, phase]);
-
-  // --- Settling phase ---
-
-  // settled → settling: after rotation ease-out (500ms)
-  useEffect(() => {
-    if (phase !== "settled") return;
-    const timer = setTimeout(() => setPhase("settling"), 500);
-    return () => clearTimeout(timer);
-  }, [phase]);
-
-  // settling: commit message and go idle.
-  // useLayoutEffect so React flushes the state updates synchronously
-  // before the browser paints (no intermediate frame).
+  /**
+   * Pin the newest user message to the top of the viewport.
+   *
+   * The old implementation fired a smooth `scrollIntoView`, then tried to detect
+   * when it finished using a 150ms scroll-event debounce racing a 300ms fallback
+   * timer, and only then advanced the phase. Both could fire; iOS momentum
+   * scrolling and keyboard-driven viewport resizes made the timing arbitrary.
+   *
+   * Nothing waits on the scroll now. It is fired once per cycle from a layout
+   * effect and the state machine advances on its own fixed 300ms schedule, so
+   * the scroll can take as long as it likes without desynchronising anything.
+   */
   useLayoutEffect(() => {
-    if (phase !== "settling") return;
-    wasSettlingRef.current = true;
-    onTypingComplete();
-    setPhase("idle");
-  }, [phase, onTypingComplete]);
+    if (cycleId === 0) return;
+    const container = scrollRef.current;
+    const anchor = anchorRef.current;
+    if (!container || !anchor) return;
 
-  // After settling→idle DOM commit: re-anchor the latest user message
-  // to the top of the viewport before the browser paints, then trim spacer.
-  useLayoutEffect(() => {
-    if (!wasSettlingRef.current || phase !== "idle") return;
-    wasSettlingRef.current = false;
-    latestUserRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
+    const headerH = headerRef.current?.getBoundingClientRect().height ?? 0;
+    const delta =
+      anchor.getBoundingClientRect().top -
+      container.getBoundingClientRect().top;
+    // Leave a little air under the header so the bubble's top edge reads
+    // as its own, not as touching the chrome.
+    const target = Math.max(
+      0,
+      container.scrollTop + delta - headerH - ANCHOR_GAP,
+    );
 
-    // Trim spacer via direct DOM manipulation (no state → no re-render → no shift)
-    const c = scrollContainerRef.current;
-    if (c && spacerRef.current) {
-      const excess = c.scrollHeight - c.clientHeight - c.scrollTop;
-      if (excess > 0) {
-        const currentH = spacerRef.current.getBoundingClientRect().height;
-        spacerRef.current.style.height = `${Math.max(0, currentH - excess)}px`;
-      }
-    }
-  }, [phase]);
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // --- Sync scroll-padding-top with actual header height ---
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    const header = headerRef.current;
-    if (container && header) {
-      container.style.scrollPaddingTop = `${header.offsetHeight}px`;
-    }
-  }, []);
+    container.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
+  }, [cycleId]);
 
-  // --- Typing complete handler ---
-  const handleTypingDone = useCallback(() => {
-    setPhase("settled");
-  }, []);
-
-  // --- Measure thinking indicator height ---
-  useEffect(() => {
-    if ((phase === "scrolling" || phase === "thinking") && thinkingContentRef.current) {
-      setThinkingH(thinkingContentRef.current.offsetHeight);
-    }
-  }, [phase]);
-
-  // --- Derived state ---
   const lastUserIndex = messages.reduce(
     (acc, msg, i) => (msg.role === "user" ? i : acc),
     -1,
   );
+  const before = lastUserIndex >= 0 ? messages.slice(0, lastUserIndex) : messages;
+  const after = lastUserIndex >= 0 ? messages.slice(lastUserIndex) : [];
 
   const isActive = phase !== "idle";
   const thinkingVisible = phase === "thinking";
-  const thinkingOpacity = phase === "thinking" ? 1 : 0;
-  const responseOpacity = phase === "typing" || phase === "settled" || phase === "settling" ? 1 : 0;
-  const logoPhase = phase === "typing" ? "typing" : (phase === "settled" || phase === "settling") ? "settled" : "thinking";
-  // Hold space for thinking indicator through transitioning; collapse only
-  // once typing starts (response is visible) so the logo doesn't overshoot.
-  const holdThinkingSpace = phase === "scrolling" || phase === "thinking" || phase === "transitioning";
+  const responseVisible = phase === "typing" || phase === "settled";
+  const logoPhase =
+    phase === "typing" ? "typing" : phase === "settled" ? "settled" : "thinking";
+  // Hold the thinking indicator's space through the fade-out so the logo does
+  // not overshoot upward, then release it once the response is on screen.
+  const holdSpace =
+    phase === "scrolling" || phase === "thinking" || phase === "transitioning";
 
   return (
-    <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto chat-scroll">
-      {/* Sticky header with gradient — content scrolls behind it and fades */}
+    <div
+      ref={scrollRef}
+      className="flex-1 min-h-0 overflow-y-auto chat-scroll"
+      style={{
+        // Stops iOS rubber-banding from propagating to the document, which
+        // would drag the fixed body out from under the visual viewport.
+        overscrollBehavior: "contain",
+      }}
+    >
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 flex items-center justify-center px-4 pt-3 pb-5"
+        className="sticky top-0 z-20 flex items-center justify-center px-4 py-3"
         style={{
-          background: "linear-gradient(to bottom, var(--bg-primary) 55%, transparent 100%)",
+          // Solid, with no fade below it. A fade (gradient header earlier,
+          // then a gradient strip under it) softened the top edge of the
+          // user bubble pinned beneath the header — that is the "blended in"
+          // border. claude.ai's header is a hard edge; so is this one.
+          backgroundColor: "var(--bg-primary)",
         }}
       >
         <button
+          type="button"
           className="flex items-center gap-2 cursor-pointer"
           onClick={onReset}
-          style={{ background: "none", border: "none", padding: 0, margin: 0, WebkitTapHighlightColor: "transparent" }}
+          // Without this the accessible name is just the persona name, which is
+          // identical to the ModelSelector trigger's — two buttons, same name,
+          // no hint that this one clears the conversation. The visible text is
+          // kept as the prefix so voice control ("click Claudia") still works.
+          aria-label={`${displayName} — new chat`}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            margin: 0,
+            WebkitTapHighlightColor: "transparent",
+          }}
         >
-          <AnimatedLogo logoSrc={logoSrc} phase="settled" size={logoSrc.includes("consuela") ? 26 : 32} />
-          <span className="text-[24px] font-normal" style={{ color: "var(--text-primary)" }}>
+          <AnimatedLogo
+            logoSrc={logoSrc}
+            phase="settled"
+            size={logoSrc.includes("consuela") ? 22 : 26}
+          />
+          <span
+            className="text-[18px] font-normal"
+            style={{ color: "var(--text-primary)" }}
+          >
             {displayName}
           </span>
         </button>
       </div>
-      <div className="max-w-3xl mx-auto px-4 pb-6">
-        {messages.map((msg, i) => (
-          <div key={i}>
-            {i === lastUserIndex && <div ref={latestUserRef} />}
-            <ChatMessage role={msg.role} content={msg.content} logoSrc={msg.logoSrc || logoSrc} />
-          </div>
+
+      <div
+        className="max-w-3xl mx-auto px-4 pt-2"
+        style={{ paddingBottom: LIST_BOTTOM_PAD }}
+      >
+        {before.map((msg, i) => (
+          <ChatMessage
+            key={i}
+            role={msg.role}
+            content={msg.content}
+            logoSrc={msg.logoSrc || logoSrc}
+          />
         ))}
 
-        {/* Active response area — matches ChatMessage assistant layout (mb-4, mt-3 logo) */}
-        {isActive && (
-          <div ref={activeAreaRef} className="mb-4">
-            {/* Content area: thinking is absolutely positioned (no layout contribution).
-                Response wrapper uses animated min-height to hold space during thinking,
-                then collapses smoothly so the logo slides up to sit below the text. */}
-            <div style={{ position: "relative" }}>
-              {/* Thinking — absolutely positioned overlay, fades out */}
-              <div
-                ref={thinkingContentRef}
-                data-testid="thinking-wrapper"
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  opacity: thinkingOpacity,
-                  transition: "opacity 200ms ease-out",
-                  pointerEvents: thinkingVisible ? "auto" : "none",
-                }}
-              >
-                <ThinkingIndicator isVisible={thinkingVisible} />
-              </div>
+        {/*
+          Scroll anchor. Everything from the newest user message downward lives
+          in here. The block reserves exactly enough height that, when the list
+          is scrolled all the way to the bottom, the newest user message sits
+          ANCHOR_GAP below the header — which is the same position the send
+          scroll pins it to. That identity is what makes the whole sequence
+          behave like claude.ai:
 
-              {/* Response — in normal flow; min-height matches thinking during
-                  scrolling/thinking phases, then collapses to let logo slide up */}
-              <div style={{
-                opacity: responseOpacity,
-                transition: "opacity 200ms ease-in, min-height 400ms ease-out",
-                minHeight: holdThinkingSpace ? thinkingH : 0,
-              }}>
-                {pendingResponse !== null && (
-                  <TypedResponse
-                    text={pendingResponse}
-                    onComplete={handleTypingDone}
+            • on send, the new message scrolls up under the header;
+            • when the reply commits nothing moves, because the reserve is
+              the same size before and after;
+            • scrolling up and back down lands on that identical view, so the
+              bubble is never clipped under the header and there is never a
+              gap below the reply.
+
+          Two earlier versions got this wrong. A full-viewport reserve left
+          the bottom (ANCHOR_GAP + LIST_BOTTOM_PAD) px past the pinned view,
+          so scrolling back down tucked the bubble under the header. Dropping
+          the reserve to 0 on commit removed all overflow from a short
+          conversation, so the browser clamped scrollTop to 0 and the view
+          snapped back to the first message after every reply.
+
+          Replies taller than the reserve simply grow past it; then the end
+          of the conversation is the bottom of the list, as usual.
+        */}
+        <div
+          ref={anchorRef}
+          data-testid="scroll-anchor"
+          style={{
+            minHeight:
+              after.length > 0
+                ? `calc(var(--list-h, 100dvh) - var(--header-h, 60px) - ${ANCHOR_GAP + LIST_BOTTOM_PAD}px)`
+                : 0,
+          }}
+        >
+          {after.map((msg, i) => (
+            <ChatMessage
+              key={lastUserIndex + i}
+              role={msg.role}
+              content={msg.content}
+              logoSrc={msg.logoSrc || logoSrc}
+            />
+          ))}
+
+          {isActive && (
+            <div className="mb-4">
+              <div style={{ position: "relative" }}>
+                {/* Thinking indicator is absolutely positioned so it never
+                    contributes layout — only the reserved min-height below
+                    does, and that is animated. */}
+                <div
+                  ref={thinkingRef}
+                  data-testid="thinking-wrapper"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    opacity: thinkingVisible ? 1 : 0,
+                    transition: "opacity 200ms ease-out",
+                    pointerEvents: thinkingVisible ? "auto" : "none",
+                  }}
+                >
+                  <ThinkingIndicator
+                    key={cycleId}
+                    isVisible={thinkingVisible}
                   />
-                )}
+                </div>
+
+                <div
+                  style={{
+                    opacity: responseVisible ? 1 : 0,
+                    transition:
+                      "opacity 200ms ease-in, min-height 400ms ease-out",
+                    minHeight: holdSpace ? "var(--thinking-h, 0px)" : 0,
+                  }}
+                >
+                  {responseVisible && pending !== null && (
+                    /* Mounted only once the phase reaches `typing`. `pending`
+                       is set a phase earlier, during `transitioning`, and a
+                       reveal that finishes instantly (reduced motion, or a
+                       one-word reply) would fire onTypingDone while the
+                       machine still ignores it — leaving the cycle parked in
+                       `typing` forever.
+
+                       Keyed by cycle: Claudia's response is always the same
+                       string, and without a key an identical text prop would
+                       not restart the reveal effect on the next message. */
+                    <TypedResponse
+                      key={cycleId}
+                      text={pending}
+                      onComplete={onTypingDone}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* mt-3 matches ChatMessage's assistant layout exactly, so the
+                  handoff from active area to committed message is invisible. */}
+              <div className="flex justify-start mt-3">
+                <AnimatedLogo
+                  logoSrc={pendingLogo}
+                  phase={logoPhase}
+                  size={28}
+                />
               </div>
             </div>
-
-            {/* Persistent logo — mt-3 matches ChatMessage assistant layout */}
-            <div className="flex justify-start mt-3">
-              <AnimatedLogo logoSrc={activeLogoSrc} phase={logoPhase} size={28} />
-            </div>
-          </div>
-        )}
-
-        {/* Spacer — enough so the latest user message stays at top even after
-            the active area (129px) is replaced by the shorter committed ChatMessage (~65px).
-            80dvh provides ≥80px buffer on small viewports, absorbing the ~64px height drop. */}
-        <div ref={spacerRef} className="h-[80dvh]" />
+          )}
+        </div>
       </div>
     </div>
   );

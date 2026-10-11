@@ -4,7 +4,6 @@ import { ChatInput } from "@/components/ChatInput";
 
 const defaultProps = {
   onSend: () => {},
-  disabled: false,
   persona: "claudia" as const,
   onPersonaChange: () => {},
 };
@@ -17,7 +16,9 @@ describe("ChatInput", () => {
 
   it("renders textarea with landing placeholder when isLanding", () => {
     render(<ChatInput {...defaultProps} isLanding />);
-    expect(screen.getByPlaceholderText("How are you doing today?")).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText("How are you doing today?"),
+    ).toBeInTheDocument();
   });
 
   it("calls onSend with message when send button clicked", async () => {
@@ -25,8 +26,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
-    const textarea = screen.getByPlaceholderText("Reply...");
-    await user.type(textarea, "hello");
+    await user.type(screen.getByPlaceholderText("Reply..."), "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(onSend).toHaveBeenCalledWith("hello");
@@ -43,32 +43,101 @@ describe("ChatInput", () => {
     expect(textarea).toHaveValue("");
   });
 
-  it("keeps textarea focusable but read-only when disabled prop is true", () => {
-    render(<ChatInput {...defaultProps} disabled={true} />);
-    const textarea = screen.getByPlaceholderText("Reply...");
-    expect(textarea).not.toBeDisabled();
-    expect(textarea).toHaveAttribute("readonly");
-    expect(textarea).toHaveAttribute("aria-disabled", "true");
-  });
-
-  it("ignores textarea changes when disabled prop is true", () => {
-    render(<ChatInput {...defaultProps} disabled={true} />);
-    const textarea = screen.getByPlaceholderText("Reply...");
-
-    fireEvent.change(textarea, { target: { value: "blocked" } });
-
-    expect(textarea).toHaveValue("");
-  });
-
   it("sends on Enter key press", async () => {
     const onSend = jest.fn();
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
+    await user.type(screen.getByPlaceholderText("Reply..."), "hello{Enter}");
+
+    expect(onSend).toHaveBeenCalledWith("hello");
+  });
+
+  it("inserts a newline on Shift+Enter instead of sending", async () => {
+    const onSend = jest.fn();
+    const user = userEvent.setup();
+    render(<ChatInput {...defaultProps} onSend={onSend} />);
+
+    const textarea = screen.getByPlaceholderText("Reply...");
+    await user.type(textarea, "a{Shift>}{Enter}{/Shift}b");
+
+    expect(onSend).not.toHaveBeenCalled();
+    expect(textarea).toHaveValue("a\nb");
+  });
+
+  it("does not send while an IME composition is active", () => {
+    const onSend = jest.fn();
+    render(<ChatInput {...defaultProps} onSend={onSend} />);
+
+    const textarea = screen.getByPlaceholderText("Reply...");
+    fireEvent.change(textarea, { target: { value: "にほんご" } });
+    fireEvent.keyDown(textarea, { key: "Enter", isComposing: true });
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("does not send whitespace-only input", async () => {
+    const onSend = jest.fn();
+    const user = userEvent.setup();
+    render(<ChatInput {...defaultProps} onSend={onSend} />);
+
+    await user.type(screen.getByPlaceholderText("Reply..."), "   {Enter}");
+
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("keeps focus in the textarea after sending, so the keyboard stays up", async () => {
+    const user = userEvent.setup();
+    render(<ChatInput {...defaultProps} />);
+
     const textarea = screen.getByPlaceholderText("Reply...");
     await user.type(textarea, "hello{Enter}");
 
-    expect(onSend).toHaveBeenCalledWith("hello");
+    expect(textarea).toHaveFocus();
+  });
+
+  it("never marks the textarea as disabled or readonly", () => {
+    render(<ChatInput {...defaultProps} />);
+    const textarea = screen.getByPlaceholderText("Reply...");
+    expect(textarea).not.toBeDisabled();
+    expect(textarea).not.toHaveAttribute("readonly");
+    expect(textarea).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("keeps the send button enabled so Enter and click are never blocked", async () => {
+    const onSend = jest.fn();
+    const user = userEvent.setup();
+    render(<ChatInput {...defaultProps} onSend={onSend} />);
+
+    // Empty: enabled but visually muted.
+    const sendBtn = screen.getByRole("button", { name: /send/i });
+    expect(sendBtn).not.toBeDisabled();
+    expect(sendBtn).toHaveStyle({ backgroundColor: "var(--text-secondary)" });
+
+    await user.type(screen.getByPlaceholderText("Reply..."), "hello");
+    expect(sendBtn).toHaveStyle({ backgroundColor: "var(--accent-orange)" });
+  });
+
+  it("wraps the textarea in a label so taps focus it natively", () => {
+    render(<ChatInput {...defaultProps} />);
+    const textarea = screen.getByPlaceholderText("Reply...");
+    expect(textarea.closest("label")).not.toBeNull();
+  });
+
+  it("does not blur the textarea on pointer down", () => {
+    const blurSpy = jest.spyOn(HTMLTextAreaElement.prototype, "blur");
+    render(<ChatInput {...defaultProps} />);
+
+    const textarea = screen.getByPlaceholderText("Reply...");
+    textarea.focus();
+    blurSpy.mockClear();
+
+    fireEvent.pointerDown(textarea);
+
+    // The old implementation blurred then refocused, firing twice per tap and
+    // flickering the iOS keyboard.
+    expect(blurSpy).not.toHaveBeenCalled();
+    blurSpy.mockRestore();
   });
 
   it("shows model selector with current persona", () => {
@@ -76,71 +145,13 @@ describe("ChatInput", () => {
     expect(screen.getByText("Claudia")).toBeInTheDocument();
   });
 
-  it("shows send button when textarea is empty (gray/disabled)", () => {
-    render(<ChatInput {...defaultProps} />);
-    const sendBtn = screen.getByRole("button", { name: /send/i });
-    expect(sendBtn).toBeInTheDocument();
-    expect(sendBtn).toBeDisabled();
-  });
-
-  it("shows send button with orange background when text is entered", async () => {
-    const user = userEvent.setup();
-    render(<ChatInput {...defaultProps} />);
-
-    const textarea = screen.getByPlaceholderText("Reply...");
-    await user.type(textarea, "hello");
-
-    const sendBtn = screen.getByRole("button", { name: /send/i });
-    expect(sendBtn).not.toBeDisabled();
-    expect(sendBtn).toHaveStyle({ backgroundColor: "var(--accent-orange)" });
-  });
-
   it("does not render a voice button", () => {
     render(<ChatInput {...defaultProps} />);
-    expect(screen.queryByRole("button", { name: /voice/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /listening/i })).not.toBeInTheDocument();
-  });
-
-  it("focuses the textarea from a pointer tap after being re-enabled", () => {
-    const { rerender } = render(<ChatInput {...defaultProps} disabled={true} />);
-
-    rerender(<ChatInput {...defaultProps} disabled={false} />);
-
-    const textarea = screen.getByPlaceholderText("Reply...");
-    const inputBox = textarea.closest(".rounded-2xl");
-    expect(inputBox).not.toBeNull();
-
-    fireEvent.pointerDown(inputBox as HTMLElement);
-
-    expect(textarea).toHaveFocus();
-  });
-
-  it("refocuses the reply textarea from a direct pointer tap", () => {
-    const focusSpy = jest.spyOn(HTMLTextAreaElement.prototype, "focus");
-    const blurSpy = jest.spyOn(HTMLTextAreaElement.prototype, "blur");
-    render(<ChatInput {...defaultProps} />);
-
-    const textarea = screen.getByPlaceholderText("Reply...");
-    textarea.focus();
-    focusSpy.mockClear();
-    blurSpy.mockClear();
-
-    fireEvent.pointerDown(textarea);
-
-    expect(blurSpy).toHaveBeenCalledTimes(1);
-    expect(focusSpy).toHaveBeenCalledTimes(1);
-    focusSpy.mockRestore();
-    blurSpy.mockRestore();
-  });
-
-  it("lets the landing textarea handle direct pointer taps natively", () => {
-    const focusSpy = jest.spyOn(HTMLTextAreaElement.prototype, "focus");
-    render(<ChatInput {...defaultProps} isLanding />);
-    focusSpy.mockClear();
-
-    fireEvent.pointerDown(screen.getByPlaceholderText("How are you doing today?"));
-
-    expect(focusSpy).not.toHaveBeenCalled();
-    focusSpy.mockRestore();
+    expect(
+      screen.queryByRole("button", { name: /voice/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /listening/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,192 +1,275 @@
 import { render, screen, act } from "@testing-library/react";
 import { MessageList } from "@/components/MessageList";
+import type { Message, Phase } from "@/components/useChatMachine";
 
-// Mock scrollIntoView
-const mockScrollIntoView = jest.fn();
-Element.prototype.scrollIntoView = mockScrollIntoView;
+const mockScrollTo = jest.fn();
+Element.prototype.scrollTo = mockScrollTo;
 
-const defaultProps = {
-  messages: [] as { role: "user" | "assistant"; content: string }[],
-  isThinking: false,
-  pendingResponse: null as string | null,
-  logoSrc: "/claude-logo.svg",
-  onTypingComplete: jest.fn(),
-};
+function props(
+  overrides: {
+    messages?: Message[];
+    phase?: Phase;
+    pending?: string | null;
+    cycleId?: number;
+  } = {},
+) {
+  return {
+    messages: [] as Message[],
+    phase: "idle" as Phase,
+    pending: null as string | null,
+    cycleId: 0,
+    logoSrc: "/claude-logo.svg",
+    pendingLogo: "/claude-logo.svg",
+    displayName: "Claudia",
+    onTypingDone: jest.fn(),
+    onReset: jest.fn(),
+    ...overrides,
+  };
+}
+
+const userMsg: Message = { role: "user", content: "hello" };
 
 describe("MessageList", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    mockScrollIntoView.mockClear();
-    defaultProps.onTypingComplete.mockClear();
+    mockScrollTo.mockClear();
   });
 
   afterEach(() => {
     jest.useRealTimers();
   });
 
-  it("renders messages", () => {
+  it("renders committed messages", () => {
     render(
       <MessageList
-        {...defaultProps}
-        messages={[{ role: "user", content: "hello" }]}
-      />
+        {...props({
+          messages: [userMsg, { role: "assistant", content: "si papi" }],
+        })}
+      />,
     );
     expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(screen.getByText("si papi")).toBeInTheDocument();
   });
 
-  it("shows logo when isThinking becomes true", () => {
-    render(<MessageList {...defaultProps} isThinking={true} />);
-    // AnimatedLogo renders an SVG with aria-hidden="true"
-    const svg = document.querySelector("svg[aria-hidden='true']");
-    expect(svg).toBeInTheDocument();
+  it("renders the header with the display name", () => {
+    render(<MessageList {...props({ messages: [userMsg] })} />);
+    expect(screen.getByText("Claudia")).toBeInTheDocument();
   });
 
-  it("does not show thinking text immediately (scrolling phase)", () => {
-    render(<MessageList {...defaultProps} isThinking={true} />);
-    // During scrolling phase, thinking text should not be visible yet
-    // ThinkingIndicator renders but its wrapper has opacity 0
-    const wrapper = document.querySelector("[data-testid='thinking-wrapper']");
-    expect(wrapper).toHaveStyle({ opacity: "0" });
+  it("shows nothing active while idle", () => {
+    render(<MessageList {...props({ messages: [userMsg] })} />);
+    expect(screen.queryByTestId("thinking-wrapper")).not.toBeInTheDocument();
   });
 
-  it("shows thinking text after scroll completes", () => {
-    render(<MessageList {...defaultProps} isThinking={true} />);
+  it("shows the thinking indicator during the thinking phase", () => {
+    render(
+      <MessageList {...props({ messages: [userMsg], phase: "thinking" })} />,
+    );
+    expect(screen.getByText("Thinking")).toBeInTheDocument();
+    expect(screen.getByTestId("thinking-wrapper")).toHaveStyle({ opacity: 1 });
+  });
 
-    // Advance past scroll fallback timer (1000ms)
+  it("hides the thinking indicator during transitioning", () => {
+    render(
+      <MessageList
+        {...props({
+          messages: [userMsg],
+          phase: "transitioning",
+          pending: "si papi",
+        })}
+      />,
+    );
+    expect(screen.getByTestId("thinking-wrapper")).toHaveStyle({ opacity: 0 });
+  });
+
+  it("keeps the same reserve under the newest message through the whole cycle", () => {
+    // The reserve is what makes "scrolled to the bottom" and "newest message
+    // pinned under the header" the same scroll position. It must be identical
+    // while the reply is in flight and after it commits — if it shrank on
+    // commit, a short conversation would lose its overflow and the browser
+    // would clamp scrollTop back to 0 (the "jumps to the first message" bug);
+    // if it were taller than the pinned view, scrolling back down would tuck
+    // the bubble under the header.
+    const anchor = () => screen.getByTestId("scroll-anchor").style.minHeight;
+    const { rerender } = render(
+      <MessageList {...props({ messages: [userMsg], phase: "scrolling", cycleId: 1 })} />,
+    );
+    const pinned = anchor();
+    expect(pinned).toBe(
+      "calc(var(--list-h, 100dvh) - var(--header-h, 60px) - 32px)",
+    );
+
+    rerender(
+      <MessageList {...props({ messages: [userMsg], phase: "typing", pending: "si papi", cycleId: 1 })} />,
+    );
+    expect(anchor()).toBe(pinned);
+
+    const committed: Message[] = [userMsg, { role: "assistant", content: "si papi" }];
+    rerender(<MessageList {...props({ messages: committed, phase: "idle", cycleId: 1 })} />);
+    expect(anchor()).toBe(pinned);
+    expect(screen.getByTestId("scroll-anchor").style.transition).toBe("");
+
+    // A long conversation: the reserve moves to the newest user message and
+    // the earlier turns sit above it with no reserve of their own.
+    const long: Message[] = [
+      ...committed,
+      { role: "user", content: "line\n".repeat(40) },
+      { role: "assistant", content: "si papi" },
+      { role: "user", content: "again" },
+    ];
+    rerender(<MessageList {...props({ messages: long, phase: "scrolling", cycleId: 3 })} />);
+    expect(anchor()).toBe(pinned);
+    expect(screen.getByTestId("scroll-anchor")).toHaveTextContent("again");
+    expect(screen.getByTestId("scroll-anchor")).not.toHaveTextContent("hello");
+    expect(mockScrollTo).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not mount the reveal before the typing phase", () => {
+    render(
+      <MessageList
+        {...props({
+          messages: [userMsg],
+          phase: "transitioning",
+          pending: "si papi",
+          cycleId: 1,
+        })}
+      />,
+    );
+    expect(screen.queryByLabelText("si papi")).not.toBeInTheDocument();
+  });
+
+  it("reveals the response during the typing phase", () => {
+    render(
+      <MessageList
+        {...props({
+          messages: [userMsg],
+          phase: "typing",
+          pending: "si papi",
+          cycleId: 1,
+        })}
+      />,
+    );
     act(() => {
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(2000);
+    });
+    expect(screen.getByLabelText("si papi")).toBeInTheDocument();
+  });
+
+  it("calls onTypingDone once the reveal finishes", () => {
+    const p = props({
+      messages: [userMsg],
+      phase: "typing",
+      pending: "si papi",
+      cycleId: 1,
+    });
+    render(<MessageList {...p} />);
+
+    act(() => {
+      jest.advanceTimersByTime(3000);
     });
 
-    const wrapper = document.querySelector("[data-testid='thinking-wrapper']");
-    expect(wrapper).toHaveStyle({ opacity: "1" });
+    expect(p.onTypingDone).toHaveBeenCalled();
   });
 
-  it("renders persistent logo across phase changes", () => {
-    const { rerender } = render(
-      <MessageList {...defaultProps} isThinking={true} />
-    );
-
-    const logoBeforeTransition = document.querySelector("svg[aria-hidden='true']");
-    expect(logoBeforeTransition).toBeInTheDocument();
-
-    // Advance to thinking phase
-    act(() => { jest.advanceTimersByTime(1000); });
-
-    // Simulate response arrival
-    rerender(
+  it("keeps the response visible through the settled phase", () => {
+    render(
       <MessageList
-        {...defaultProps}
-        isThinking={false}
-        pendingResponse="si papi"
-      />
+        {...props({
+          messages: [userMsg],
+          phase: "settled",
+          pending: "si papi",
+          cycleId: 1,
+        })}
+      />,
     );
-
-    // Logo should still be the same DOM element (persistent)
-    const logoAfterTransition = document.querySelector("svg[aria-hidden='true']");
-    expect(logoAfterTransition).toBeInTheDocument();
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(screen.getByLabelText("si papi")).toBeInTheDocument();
   });
 
-  it("shows settled logo after typing completes", () => {
+  it("scrolls the anchor into view when a new cycle starts", () => {
     const { rerender } = render(
-      <MessageList {...defaultProps} isThinking={true} />
+      <MessageList {...props({ messages: [userMsg], cycleId: 1 })} />,
     );
+    mockScrollTo.mockClear();
 
-    // Advance through scrolling -> thinking
-    act(() => { jest.advanceTimersByTime(1000); });
-
-    // Response arrives -> transitioning
     rerender(
       <MessageList
-        {...defaultProps}
-        isThinking={false}
-        pendingResponse="si papi"
-      />
+        {...props({
+          messages: [userMsg, { role: "user", content: "again" }],
+          cycleId: 2,
+          phase: "scrolling",
+        })}
+      />,
     );
 
-    // Advance past transitioning fade-out (250ms fallback)
-    act(() => { jest.advanceTimersByTime(250); });
-
-    // Advance past TypedResponse duration (1200ms default + buffer)
-    act(() => { jest.advanceTimersByTime(2000); });
-
-    // After typing completes, logo should still be present (settled phase)
-    const logo = document.querySelector("svg[aria-hidden='true']");
-    expect(logo).toBeInTheDocument();
+    expect(mockScrollTo).toHaveBeenCalled();
   });
 
-  it("commits message after settling delay", () => {
-    const onTypingComplete = jest.fn();
+  it("does not re-scroll on phase changes within the same cycle", () => {
     const { rerender } = render(
-      <MessageList {...defaultProps} isThinking={true} onTypingComplete={onTypingComplete} />
+      <MessageList
+        {...props({ messages: [userMsg], cycleId: 1, phase: "scrolling" })}
+      />,
     );
+    mockScrollTo.mockClear();
 
-    // scrolling → thinking
-    act(() => { jest.advanceTimersByTime(1000); });
-
-    // Response arrives → transitioning
     rerender(
       <MessageList
-        {...defaultProps}
-        isThinking={false}
-        pendingResponse="si papi"
-        onTypingComplete={onTypingComplete}
-      />
+        {...props({ messages: [userMsg], cycleId: 1, phase: "thinking" })}
+      />,
+    );
+    rerender(
+      <MessageList
+        {...props({
+          messages: [userMsg],
+          cycleId: 1,
+          phase: "typing",
+          pending: "si papi",
+        })}
+      />,
     );
 
-    // transitioning → typing
-    act(() => { jest.advanceTimersByTime(250); });
-
-    // Typing completes → settled
-    act(() => { jest.advanceTimersByTime(2000); });
-
-    // Not yet committed — still in settled phase
-    expect(onTypingComplete).not.toHaveBeenCalled();
-
-    // settled → settling → idle (500ms for rotation ease-out, then immediate commit)
-    act(() => { jest.advanceTimersByTime(500); });
-
-    // onTypingComplete should have been called during settling
-    expect(onTypingComplete).toHaveBeenCalledTimes(1);
+    expect(mockScrollTo).not.toHaveBeenCalled();
   });
 
-  it("commits response immediately when new message arrives during settled phase", () => {
-    const onTypingComplete = jest.fn();
-    const { rerender } = render(
-      <MessageList {...defaultProps} isThinking={true} onTypingComplete={onTypingComplete} />
-    );
+  it("calls onReset when the header logo is clicked", () => {
+    const p = props({ messages: [userMsg] });
+    render(<MessageList {...p} />);
 
-    // scrolling → thinking
-    act(() => { jest.advanceTimersByTime(1000); });
+    screen.getByText("Claudia").closest("button")!.click();
 
-    // Response arrives → transitioning
-    rerender(
-      <MessageList
-        {...defaultProps}
-        isThinking={false}
-        pendingResponse="si papi"
-        onTypingComplete={onTypingComplete}
-      />
-    );
+    expect(p.onReset).toHaveBeenCalled();
+  });
 
-    // transitioning → typing
-    act(() => { jest.advanceTimersByTime(250); });
+  it("replays the reveal when the same response text repeats in a new cycle", () => {
+    const first = props({
+      messages: [userMsg],
+      phase: "typing",
+      pending: "si papi",
+      cycleId: 1,
+    });
+    const { rerender } = render(<MessageList {...first} />);
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(first.onTypingDone).toHaveBeenCalled();
 
-    // Typing completes → settled
-    act(() => { jest.advanceTimersByTime(2000); });
+    // Same text, new cycle — the cycleId key must force a remount so the
+    // reveal effect runs again. Claudia always answers "si papi", so without
+    // the key the second message would never complete.
+    const second = props({
+      messages: [userMsg, { role: "user", content: "again" }],
+      phase: "typing",
+      pending: "si papi",
+      cycleId: 2,
+    });
+    rerender(<MessageList {...second} />);
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
 
-    expect(onTypingComplete).not.toHaveBeenCalled();
-
-    // New message arrives during settled phase (before 500ms settling timer)
-    rerender(
-      <MessageList
-        {...defaultProps}
-        isThinking={true}
-        pendingResponse="si papi"
-        onTypingComplete={onTypingComplete}
-      />
-    );
-
-    // onTypingComplete should be called immediately to commit the response
-    expect(onTypingComplete).toHaveBeenCalledTimes(1);
+    expect(second.onTypingDone).toHaveBeenCalled();
   });
 });
