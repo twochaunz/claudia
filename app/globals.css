@@ -42,7 +42,11 @@ html, body {
   padding: 0;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
+  /* claude.ai renders its chrome — header, composer, model picker, the
+     disclaimer — in a sans face, and only Claude's own prose (and the
+     landing greeting) in serif. The body default is therefore sans, and
+     the serif is opted into with .font-serif-response below. */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -96,6 +100,11 @@ body {
 /* Sans-serif font for input (matching AnthropicSans feel) */
 .font-sans-input {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Serif for Claude's responses and the landing greeting, like claude.ai. */
+.font-serif-response {
+  font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
 }
 
 .chat-scroll {

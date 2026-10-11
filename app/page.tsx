@@ -61,7 +61,7 @@ export default function Home() {
                 onClick={() => {}}
               />
               <h1
-                className="text-[32px] font-normal"
+                className="text-[32px] font-normal font-serif-response"
                 style={{ color: "var(--text-primary)" }}
               >
                 {displayName}

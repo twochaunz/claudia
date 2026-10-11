@@ -23,7 +23,7 @@ export function ChatMessage({ role, content, logoSrc = "/claude-logo.svg" }: Cha
   return (
     <div className="mb-4">
       <div
-        className="text-[16px] leading-relaxed whitespace-pre-wrap break-words"
+        className="text-[16px] leading-relaxed whitespace-pre-wrap break-words font-serif-response"
         style={{ color: "var(--text-primary)" }}
       >
         {content}

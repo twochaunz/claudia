@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { TypedResponse } from "./TypedResponse";
@@ -50,7 +50,63 @@ export function MessageList({
   // Measured into CSS variables rather than React state. The anchor block sizes
   // itself from these in plain CSS, so a resize never triggers a render — and
   // therefore can never interleave with a phase change mid-animation.
-  useHeightVar(scrollRef, "--list-h");
+  /**
+   * Keep the view anchored to the bottom of the conversation when the list
+   * itself changes height — which on a phone is the software keyboard.
+   *
+   * The anchor's reserve is sized from `--list-h`, so when the keyboard
+   * closes the list grows first and the reserve only catches up when the
+   * ResizeObserver fires. In that one layout the content is shorter than the
+   * viewport needs, the browser clamps scrollTop down by the keyboard height,
+   * and the clamp sticks even after the reserve grows back. Each open/close
+   * walked the view further up the thread until it showed the first message.
+   *
+   * `distFromBottom` is recorded from scroll events (the clamp's own scroll
+   * event is dispatched a frame later, so at resize time it still holds the
+   * pre-clamp value). After the variable is rewritten, scrollTop is restored
+   * to the same distance from the bottom — inside the observer callback, so
+   * before paint and with no visible flicker.
+   */
+  const contentRef = useRef<HTMLDivElement>(null);
+  const distFromBottom = useRef(0);
+  const recordedClientH = useRef(0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const record = () => {
+      distFromBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight;
+      recordedClientH.current = el.clientHeight;
+    };
+    record();
+    el.addEventListener("scroll", record, { passive: true });
+    // Content changing height at a constant viewport (a reply growing, a
+    // commit) is a real change in the distance to the bottom, so record it.
+    // A content change that arrives with a viewport change is the reserve
+    // catching up; restoreFromBottom has already handled that one and
+    // updated recordedClientH, so this records the restored state.
+    let ro: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined" && contentRef.current) {
+      ro = new ResizeObserver(() => {
+        if (el.clientHeight === recordedClientH.current) record();
+      });
+      ro.observe(contentRef.current);
+    }
+    return () => {
+      el.removeEventListener("scroll", record);
+      ro?.disconnect();
+    };
+  }, []);
+  const restoreFromBottom = useCallback((el: HTMLElement) => {
+    if (el.clientHeight === recordedClientH.current) return;
+    const target = Math.max(
+      0,
+      el.scrollHeight - el.clientHeight - distFromBottom.current,
+    );
+    if (Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
+    recordedClientH.current = el.clientHeight;
+  }, []);
+
+  useHeightVar(scrollRef, "--list-h", [], restoreFromBottom);
   useHeightVar(headerRef, "--header-h");
   // The thinking indicator only exists while a cycle is active, so this one
   // has to re-attach whenever the active area remounts.
@@ -162,6 +218,7 @@ export function MessageList({
       </div>
 
       <div
+        ref={contentRef}
         className="max-w-3xl mx-auto px-4 pt-2"
         style={{ paddingBottom: LIST_BOTTOM_PAD }}
       >

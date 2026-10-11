@@ -183,12 +183,20 @@ export function AnimatedLogo({ logoSrc, phase, size = 28, onClick }: AnimatedLog
     }
   }, [winking]);
 
+  // Consuela's glasses are scaled 1.3x about the right lens and overhang the
+  // 24-unit box by ~3 units on the right. On desktop browsers the
+  // overflow="visible" below rendered that overhang anyway; iOS Safari clips
+  // an inline <svg> to its box regardless, which showed up as the right lens
+  // being cut off on phones. Widen the box to hold the whole drawing and
+  // scale the element width to match, so the artwork keeps its exact size.
+  const vbWidth = isConsuela ? 27 : 24;
+
   const svgElement = (
     <svg
       ref={svgRef}
-      width={size}
+      width={(size * vbWidth) / 24}
       height={size}
-      viewBox="0 0 24 24"
+      viewBox={`0 0 ${vbWidth} 24`}
       overflow="visible"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
