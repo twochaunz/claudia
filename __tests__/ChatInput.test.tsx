@@ -142,6 +142,22 @@ describe("ChatInput", () => {
     blurSpy.mockRestore();
   });
 
+  it("does not focus the textarea when a model is picked", async () => {
+    const user = userEvent.setup();
+    const onPersonaChange = jest.fn();
+    render(<ChatInput {...defaultProps} isLanding onPersonaChange={onPersonaChange} />);
+    const textarea = screen.getByPlaceholderText("How can I help you today?");
+    textarea.blur();
+    await user.click(screen.getByRole("button", { name: /^Claudia$/ }));
+    // The composer wrapper is a <label>; a click that reaches it with its
+    // default intact ends with the browser focusing the textarea (jsdom does
+    // not model that step, so the cancelled default is what is asserted).
+    const notPrevented = fireEvent.click(screen.getByText("Consuela", { exact: true }));
+    expect(notPrevented).toBe(false);
+    expect(onPersonaChange).toHaveBeenCalledWith("consuela");
+    expect(textarea).not.toHaveFocus();
+  });
+
   it("shows model selector with current persona", () => {
     render(<ChatInput {...defaultProps} persona="claudia" />);
     expect(screen.getByText("Claudia")).toBeInTheDocument();
