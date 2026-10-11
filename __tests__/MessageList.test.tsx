@@ -124,12 +124,13 @@ describe("MessageList", () => {
     expect(mockScrollTo).toHaveBeenCalledTimes(2);
   });
 
-  it("sets the header wordmark in the serif and collapses it by the keyboard height", () => {
+  it("sets the header wordmark in the serif and never sizes it from the keyboard", () => {
     render(<MessageList {...props({ messages: [userMsg], phase: "idle", cycleId: 1 })} />);
     const title = screen.getByText("Claudia");
     expect(title.className).toContain("font-serif-response");
     const header = screen.getByRole("button", { name: /new chat/ }).parentElement!;
-    expect(header.style.height).toBe("clamp(0px, 52px - var(--kb-h, 0px), 52px)");
+    expect(header.style.height).toBe("");
+    expect(header.style.transition).toBe("");
   });
 
   it("does not mount the reveal before the typing phase", () => {
