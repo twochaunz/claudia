@@ -16,6 +16,8 @@ import type { Message, Phase } from "./useChatMachine";
  */
 const ANCHOR_GAP = 8;
 const LIST_BOTTOM_PAD = 24;
+/** Header height with the keyboard closed: 12px padding around a 28px row. */
+const HEADER_H = 52;
 
 interface MessageListProps {
   messages: Message[];
@@ -50,6 +52,53 @@ export function MessageList({
   // Measured into CSS variables rather than React state. The anchor block sizes
   // itself from these in plain CSS, so a resize never triggers a render — and
   // therefore can never interleave with a phase change mid-animation.
+  /**
+   * Pin the newest user message to the top of the viewport.
+   *
+   * The old implementation fired a smooth `scrollIntoView`, then tried to detect
+   * when it finished using a 150ms scroll-event debounce racing a 300ms fallback
+   * timer, and only then advanced the phase. Both could fire; iOS momentum
+   * scrolling and keyboard-driven viewport resizes made the timing arbitrary.
+   *
+   * Nothing waits on the scroll now. It is fired once per cycle from a layout
+   * effect and the state machine advances on its own fixed 300ms schedule, so
+   * the scroll can take as long as it likes without desynchronising anything.
+   */
+  const pinToAnchor = useCallback(() => {
+    const container = scrollRef.current;
+    const anchor = anchorRef.current;
+    if (!container || !anchor) return;
+
+    const headerH = headerRef.current?.getBoundingClientRect().height ?? 0;
+    const delta =
+      anchor.getBoundingClientRect().top -
+      container.getBoundingClientRect().top;
+    // Leave a little air under the header so the bubble's top edge reads
+    // as its own, not as touching the chrome.
+    const target = Math.max(
+      0,
+      container.scrollTop + delta - headerH - ANCHOR_GAP,
+    );
+
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    container.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
+  }, []);
+
+  // While a pin's smooth scroll may still be running, a list resize re-pins
+  // instead of restoring the distance to the bottom (see below). Sending
+  // resets the composer to one line, which grows the list in the same frame
+  // the pin starts; without this the restore drove a tall message straight
+  // to the bottom and cancelled the pin.
+  const pinUntil = useRef(0);
+  useLayoutEffect(() => {
+    if (cycleId === 0) return;
+    pinUntil.current = performance.now() + 1000;
+    pinToAnchor();
+  }, [cycleId, pinToAnchor]);
+
   /**
    * Keep the view anchored to the bottom of the conversation when the list
    * itself changes height — which on a phone is the software keyboard.
@@ -96,15 +145,22 @@ export function MessageList({
       ro?.disconnect();
     };
   }, []);
-  const restoreFromBottom = useCallback((el: HTMLElement) => {
-    if (el.clientHeight === recordedClientH.current) return;
-    const target = Math.max(
-      0,
-      el.scrollHeight - el.clientHeight - distFromBottom.current,
-    );
-    if (Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
-    recordedClientH.current = el.clientHeight;
-  }, []);
+  const restoreFromBottom = useCallback(
+    (el: HTMLElement) => {
+      if (el.clientHeight === recordedClientH.current) return;
+      recordedClientH.current = el.clientHeight;
+      if (performance.now() < pinUntil.current) {
+        pinToAnchor();
+        return;
+      }
+      const target = Math.max(
+        0,
+        el.scrollHeight - el.clientHeight - distFromBottom.current,
+      );
+      if (Math.abs(el.scrollTop - target) > 1) el.scrollTop = target;
+    },
+    [pinToAnchor],
+  );
 
   useHeightVar(scrollRef, "--list-h", [], restoreFromBottom);
   useHeightVar(headerRef, "--header-h");
@@ -112,41 +168,6 @@ export function MessageList({
   // has to re-attach whenever the active area remounts.
   useHeightVar(thinkingRef, "--thinking-h", [phase !== "idle"]);
 
-  /**
-   * Pin the newest user message to the top of the viewport.
-   *
-   * The old implementation fired a smooth `scrollIntoView`, then tried to detect
-   * when it finished using a 150ms scroll-event debounce racing a 300ms fallback
-   * timer, and only then advanced the phase. Both could fire; iOS momentum
-   * scrolling and keyboard-driven viewport resizes made the timing arbitrary.
-   *
-   * Nothing waits on the scroll now. It is fired once per cycle from a layout
-   * effect and the state machine advances on its own fixed 300ms schedule, so
-   * the scroll can take as long as it likes without desynchronising anything.
-   */
-  useLayoutEffect(() => {
-    if (cycleId === 0) return;
-    const container = scrollRef.current;
-    const anchor = anchorRef.current;
-    if (!container || !anchor) return;
-
-    const headerH = headerRef.current?.getBoundingClientRect().height ?? 0;
-    const delta =
-      anchor.getBoundingClientRect().top -
-      container.getBoundingClientRect().top;
-    // Leave a little air under the header so the bubble's top edge reads
-    // as its own, not as touching the chrome.
-    const target = Math.max(
-      0,
-      container.scrollTop + delta - headerH - ANCHOR_GAP,
-    );
-
-    const reduced =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    container.scrollTo({ top: target, behavior: reduced ? "auto" : "smooth" });
-  }, [cycleId]);
 
   const lastUserIndex = messages.reduce(
     (acc, msg, i) => (msg.role === "user" ? i : acc),
@@ -177,13 +198,27 @@ export function MessageList({
     >
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 flex items-center justify-center px-4 py-3"
+        className="sticky top-0 z-20 flex flex-col items-center justify-end px-4"
         style={{
           // Solid, with no fade below it. A fade (gradient header earlier,
           // then a gradient strip under it) softened the top edge of the
           // user bubble pinned beneath the header — that is the "blended in"
           // border. claude.ai's header is a hard edge; so is this one.
           backgroundColor: "var(--bg-primary)",
+          // The header gives way to the software keyboard. `--kb-h` is the
+          // keyboard's height (0 when closed), published per frame from the
+          // visual viewport, so the header's height tracks the keyboard
+          // directly: fully collapsed while it is up, and growing back over
+          // the last 52px of an interactive drag-to-dismiss, as if it were
+          // riding down with the keyboard. The content is bottom-aligned so
+          // it slides out through the top edge rather than being cut off.
+          // Because the header sits at the top of the scroll content, its
+          // collapse moves the conversation up into the vacated space; the
+          // anchor reserve reads `--header-h`, so the scroll range is
+          // unaffected and nothing jumps.
+          height: `clamp(0px, ${HEADER_H}px - var(--kb-h, 0px), ${HEADER_H}px)`,
+          overflow: "hidden",
+          transition: "height 160ms ease-out",
         }}
       >
         <button
@@ -199,7 +234,10 @@ export function MessageList({
             background: "none",
             border: "none",
             padding: 0,
-            margin: 0,
+            // The header's bottom padding lives on the content, not the
+            // box: a border-box height of 0 cannot go below its padding,
+            // and the collapsed header must be 0px, not a 12px strip.
+            margin: "0 0 12px",
             WebkitTapHighlightColor: "transparent",
           }}
         >
@@ -209,7 +247,9 @@ export function MessageList({
             size={logoSrc.includes("consuela") ? 22 : 26}
           />
           <span
-            className="text-[18px] font-normal"
+            // The persona name in the header is the logo wordmark, set in the
+            // serif like the landing greeting. Not UI chrome.
+            className="text-[18px] font-normal font-serif-response"
             style={{ color: "var(--text-primary)" }}
           >
             {displayName}
