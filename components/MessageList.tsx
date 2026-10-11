@@ -173,8 +173,18 @@ export function MessageList({
         */}
         <div
           ref={anchorRef}
+          data-testid="scroll-anchor"
           style={{
-            minHeight: "calc(var(--list-h, 100dvh) - var(--header-h, 60px))",
+            // Full-height only while a cycle is active, so the new user
+            // message can be pinned to the top. Once the reply has committed
+            // the reserve eases away over 400ms and the conversation settles
+            // flush above the composer, like claude.ai. Leaving it in place
+            // meant scrolling back down landed on the bubble clipped under
+            // the header with a screen of empty space below the reply.
+            minHeight: isActive
+              ? "calc(var(--list-h, 100dvh) - var(--header-h, 60px))"
+              : 0,
+            transition: isActive ? "none" : "min-height 400ms ease-out",
           }}
         >
           {after.map((msg, i) => (

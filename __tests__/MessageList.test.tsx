@@ -82,6 +82,26 @@ describe("MessageList", () => {
     expect(screen.getByTestId("thinking-wrapper")).toHaveStyle({ opacity: 0 });
   });
 
+  it("reserves a full viewport under the newest message only while active", () => {
+    const { rerender } = render(
+      <MessageList {...props({ messages: [userMsg], phase: "thinking", cycleId: 1 })} />,
+    );
+    // While active: the anchor block holds the viewport-sized reserve.
+    expect(screen.getByTestId("scroll-anchor").style.minHeight).toContain("var(--list-h");
+
+    rerender(
+      <MessageList
+        {...props({
+          messages: [userMsg, { role: "assistant", content: "si papi" }],
+          phase: "idle",
+          cycleId: 1,
+        })}
+      />,
+    );
+    // Idle: the reserve collapses so the chat sits flush above the composer.
+    expect(screen.getByTestId("scroll-anchor").style.minHeight).toBe("0");
+  });
+
   it("does not mount the reveal before the typing phase", () => {
     render(
       <MessageList
