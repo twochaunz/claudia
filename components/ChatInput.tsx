@@ -151,7 +151,20 @@ export function ChatInput({
           }}
         />
         <div className="flex items-center justify-end mt-2">
-          <div className="flex items-center gap-1.5">
+          <div
+            className="flex items-center gap-1.5"
+            // The wrapper is a <label>, so a click anywhere inside it ends
+            // with the browser focusing the textarea. For the controls that
+            // is wrong: picking a model from the menu popped the keyboard on
+            // the landing view. The menu item unmounts synchronously on
+            // click, so the browser no longer sees an interactive target
+            // inside the label and runs the label's default action.
+            // Cancelling the click's default here stops exactly that; the
+            // buttons' own onClick handlers have already run by then. Only
+            // the controls are wrapped, so the empty part of this row still
+            // focuses the textarea on tap like the rest of the box.
+            onClick={(e) => e.preventDefault()}
+          >
             <ModelSelector persona={persona} onPersonaChange={onPersonaChange} />
             <button
               type="button"
