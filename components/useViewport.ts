@@ -87,6 +87,11 @@ export function useHeightVar(
    * render and silently stop updating.
    */
   deps: unknown[] = [],
+  /**
+   * Runs after each write, with the observed element. MessageList uses it to
+   * re-anchor the scroll position from the bottom after a resize (see there).
+   */
+  onResize?: (el: HTMLElement) => void,
 ) {
   // Layout effect so the variable exists before the first paint. The scroll
   // anchor's min-height depends on `--list-h`; with a plain effect the first
@@ -103,9 +108,12 @@ export function useHeightVar(
     write();
 
     if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(write);
+    const ro = new ResizeObserver(() => {
+      write();
+      onResize?.(el);
+    });
     ro.observe(el);
     return () => ro.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref, varName, ...deps]);
+  }, [ref, varName, onResize, ...deps]);
 }

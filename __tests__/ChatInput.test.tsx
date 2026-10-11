@@ -9,15 +9,17 @@ const defaultProps = {
 };
 
 describe("ChatInput", () => {
-  it("renders textarea with Reply placeholder by default", () => {
-    render(<ChatInput {...defaultProps} />);
-    expect(screen.getByPlaceholderText("Reply...")).toBeInTheDocument();
+  it("names the persona in the reply placeholder, like claude.ai's 'Reply to Claude...'", () => {
+    const { rerender } = render(<ChatInput {...defaultProps} />);
+    expect(screen.getByPlaceholderText("Reply to Claudia...")).toBeInTheDocument();
+    rerender(<ChatInput {...defaultProps} persona="consuela" />);
+    expect(screen.getByPlaceholderText("Reply to Consuela...")).toBeInTheDocument();
   });
 
   it("renders textarea with landing placeholder when isLanding", () => {
     render(<ChatInput {...defaultProps} isLanding />);
     expect(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
     ).toBeInTheDocument();
   });
 
@@ -26,7 +28,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
-    await user.type(screen.getByPlaceholderText("Reply..."), "hello");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(onSend).toHaveBeenCalledWith("hello");
@@ -36,7 +38,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} />);
 
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     await user.type(textarea, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
@@ -48,7 +50,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
-    await user.type(screen.getByPlaceholderText("Reply..."), "hello{Enter}");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "hello{Enter}");
 
     expect(onSend).toHaveBeenCalledWith("hello");
   });
@@ -58,7 +60,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     await user.type(textarea, "a{Shift>}{Enter}{/Shift}b");
 
     expect(onSend).not.toHaveBeenCalled();
@@ -69,7 +71,7 @@ describe("ChatInput", () => {
     const onSend = jest.fn();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     fireEvent.change(textarea, { target: { value: "にほんご" } });
     fireEvent.keyDown(textarea, { key: "Enter", isComposing: true });
 
@@ -81,7 +83,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} onSend={onSend} />);
 
-    await user.type(screen.getByPlaceholderText("Reply..."), "   {Enter}");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "   {Enter}");
 
     expect(onSend).not.toHaveBeenCalled();
   });
@@ -90,7 +92,7 @@ describe("ChatInput", () => {
     const user = userEvent.setup();
     render(<ChatInput {...defaultProps} />);
 
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     await user.type(textarea, "hello{Enter}");
 
     expect(textarea).toHaveFocus();
@@ -98,7 +100,7 @@ describe("ChatInput", () => {
 
   it("never marks the textarea as disabled or readonly", () => {
     render(<ChatInput {...defaultProps} />);
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     expect(textarea).not.toBeDisabled();
     expect(textarea).not.toHaveAttribute("readonly");
     expect(textarea).not.toHaveAttribute("aria-disabled");
@@ -114,13 +116,13 @@ describe("ChatInput", () => {
     expect(sendBtn).not.toBeDisabled();
     expect(sendBtn).toHaveStyle({ backgroundColor: "var(--text-secondary)" });
 
-    await user.type(screen.getByPlaceholderText("Reply..."), "hello");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "hello");
     expect(sendBtn).toHaveStyle({ backgroundColor: "var(--accent-orange)" });
   });
 
   it("wraps the textarea in a label so taps focus it natively", () => {
     render(<ChatInput {...defaultProps} />);
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     expect(textarea.closest("label")).not.toBeNull();
   });
 
@@ -128,7 +130,7 @@ describe("ChatInput", () => {
     const blurSpy = jest.spyOn(HTMLTextAreaElement.prototype, "blur");
     render(<ChatInput {...defaultProps} />);
 
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     textarea.focus();
     blurSpy.mockClear();
 

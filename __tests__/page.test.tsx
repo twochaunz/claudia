@@ -54,7 +54,7 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "what is 2+2?",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
@@ -66,11 +66,11 @@ describe("Home (Chat Page)", () => {
     const user = userEvent.setup();
     render(<Home />);
 
-    const landing = screen.getByPlaceholderText("How are you doing today?");
+    const landing = screen.getByPlaceholderText("How can I help you today?");
     await user.type(landing, "hello");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    const reply = screen.getByPlaceholderText("Reply...");
+    const reply = screen.getByPlaceholderText(/^Reply to /);
     // Identity check: if React tore down and rebuilt the input, iOS would drop
     // the keyboard and refuse to reopen it without a new gesture.
     expect(reply).toBe(landing);
@@ -82,7 +82,7 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "hello",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
@@ -101,7 +101,7 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "hello",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
@@ -118,13 +118,13 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "hello",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
     await runCycle();
 
-    await user.type(screen.getByPlaceholderText("Reply..."), "again");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "again");
     await user.click(screen.getByRole("button", { name: /send/i }));
     await runCycle();
 
@@ -139,7 +139,7 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "first",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
@@ -149,7 +149,7 @@ describe("Home (Chat Page)", () => {
       jest.advanceTimersByTime(PAST_SCROLL + 500);
     });
 
-    await user.type(screen.getByPlaceholderText("Reply..."), "second");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "second");
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(screen.getByText("second")).toBeInTheDocument();
@@ -165,12 +165,12 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "hello",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
 
-    const textarea = screen.getByPlaceholderText("Reply...");
+    const textarea = screen.getByPlaceholderText(/^Reply to /);
     const assertWritable = () => {
       expect(textarea).not.toBeDisabled();
       expect(textarea).not.toHaveAttribute("readonly");
@@ -215,7 +215,7 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "hello",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));
@@ -226,7 +226,7 @@ describe("Home (Chat Page)", () => {
     expect(screen.queryByLabelText("si papi")).not.toBeInTheDocument();
 
     // And the next cycle still works.
-    await user.type(screen.getByPlaceholderText("Reply..."), "again");
+    await user.type(screen.getByPlaceholderText(/^Reply to /), "again");
     await user.click(screen.getByRole("button", { name: /send/i }));
     await runCycle();
     expect(screen.getAllByText("si papi")).toHaveLength(2);
@@ -241,7 +241,7 @@ describe("Home (Chat Page)", () => {
     render(<Home />);
 
     await user.type(
-      screen.getByPlaceholderText("How are you doing today?"),
+      screen.getByPlaceholderText("How can I help you today?"),
       "hello",
     );
     await user.click(screen.getByRole("button", { name: /send/i }));

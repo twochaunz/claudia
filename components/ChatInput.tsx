@@ -122,7 +122,11 @@ export function ChatInput({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isLanding ? "How are you doing today?" : "Reply..."}
+          placeholder={
+            isLanding
+              ? "How can I help you today?"
+              : `Reply to ${persona === "consuela" ? "Consuela" : "Claudia"}...`
+          }
           enterKeyHint="send"
           rows={1}
           className="w-full resize-none bg-transparent text-[16px] leading-relaxed outline-none font-sans-input placeholder:text-[var(--text-secondary)]"
