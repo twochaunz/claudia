@@ -82,24 +82,46 @@ describe("MessageList", () => {
     expect(screen.getByTestId("thinking-wrapper")).toHaveStyle({ opacity: 0 });
   });
 
-  it("reserves a full viewport under the newest message only while active", () => {
+  it("keeps the same reserve under the newest message through the whole cycle", () => {
+    // The reserve is what makes "scrolled to the bottom" and "newest message
+    // pinned under the header" the same scroll position. It must be identical
+    // while the reply is in flight and after it commits — if it shrank on
+    // commit, a short conversation would lose its overflow and the browser
+    // would clamp scrollTop back to 0 (the "jumps to the first message" bug);
+    // if it were taller than the pinned view, scrolling back down would tuck
+    // the bubble under the header.
+    const anchor = () => screen.getByTestId("scroll-anchor").style.minHeight;
     const { rerender } = render(
-      <MessageList {...props({ messages: [userMsg], phase: "thinking", cycleId: 1 })} />,
+      <MessageList {...props({ messages: [userMsg], phase: "scrolling", cycleId: 1 })} />,
     );
-    // While active: the anchor block holds the viewport-sized reserve.
-    expect(screen.getByTestId("scroll-anchor").style.minHeight).toContain("var(--list-h");
+    const pinned = anchor();
+    expect(pinned).toBe(
+      "calc(var(--list-h, 100dvh) - var(--header-h, 60px) - 32px)",
+    );
 
     rerender(
-      <MessageList
-        {...props({
-          messages: [userMsg, { role: "assistant", content: "si papi" }],
-          phase: "idle",
-          cycleId: 1,
-        })}
-      />,
+      <MessageList {...props({ messages: [userMsg], phase: "typing", pending: "si papi", cycleId: 1 })} />,
     );
-    // Idle: the reserve collapses so the chat sits flush above the composer.
-    expect(screen.getByTestId("scroll-anchor").style.minHeight).toBe("0");
+    expect(anchor()).toBe(pinned);
+
+    const committed: Message[] = [userMsg, { role: "assistant", content: "si papi" }];
+    rerender(<MessageList {...props({ messages: committed, phase: "idle", cycleId: 1 })} />);
+    expect(anchor()).toBe(pinned);
+    expect(screen.getByTestId("scroll-anchor").style.transition).toBe("");
+
+    // A long conversation: the reserve moves to the newest user message and
+    // the earlier turns sit above it with no reserve of their own.
+    const long: Message[] = [
+      ...committed,
+      { role: "user", content: "line\n".repeat(40) },
+      { role: "assistant", content: "si papi" },
+      { role: "user", content: "again" },
+    ];
+    rerender(<MessageList {...props({ messages: long, phase: "scrolling", cycleId: 3 })} />);
+    expect(anchor()).toBe(pinned);
+    expect(screen.getByTestId("scroll-anchor")).toHaveTextContent("again");
+    expect(screen.getByTestId("scroll-anchor")).not.toHaveTextContent("hello");
+    expect(mockScrollTo).toHaveBeenCalledTimes(2);
   });
 
   it("does not mount the reveal before the typing phase", () => {

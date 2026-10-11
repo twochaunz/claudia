@@ -8,6 +8,15 @@ import { AnimatedLogo } from "./AnimatedLogo";
 import { useHeightVar } from "./useViewport";
 import type { Message, Phase } from "./useChatMachine";
 
+/**
+ * Air between the header's bottom edge and the pinned user bubble, and the
+ * padding under the last message. The anchor's reserve is sized from these so
+ * that "scrolled to the very bottom" and "newest message pinned under the
+ * header" are the *same* scroll position — see the anchor block below.
+ */
+const ANCHOR_GAP = 8;
+const LIST_BOTTOM_PAD = 24;
+
 interface MessageListProps {
   messages: Message[];
   phase: Phase;
@@ -71,7 +80,10 @@ export function MessageList({
       container.getBoundingClientRect().top;
     // Leave a little air under the header so the bubble's top edge reads
     // as its own, not as touching the chrome.
-    const target = Math.max(0, container.scrollTop + delta - headerH - 8);
+    const target = Math.max(
+      0,
+      container.scrollTop + delta - headerH - ANCHOR_GAP,
+    );
 
     const reduced =
       typeof window !== "undefined" &&
@@ -149,7 +161,10 @@ export function MessageList({
         </button>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pb-6 pt-2">
+      <div
+        className="max-w-3xl mx-auto px-4 pt-2"
+        style={{ paddingBottom: LIST_BOTTOM_PAD }}
+      >
         {before.map((msg, i) => (
           <ChatMessage
             key={i}
@@ -161,30 +176,37 @@ export function MessageList({
 
         {/*
           Scroll anchor. Everything from the newest user message downward lives
-          in here, and the block is at least one viewport tall — so the anchor
-          can always be scrolled to the top, and there is never dead space
-          beyond it.
+          in here. The block reserves exactly enough height that, when the list
+          is scrolled all the way to the bottom, the newest user message sits
+          ANCHOR_GAP below the header — which is the same position the send
+          scroll pins it to. That identity is what makes the whole sequence
+          behave like claude.ai:
 
-          This replaces the old `h-[80dvh]` spacer whose height was rewritten
-          imperatively (`spacerRef.current.style.height = ...`) after every
-          settle to trim the overshoot. That write happened in a layout effect
-          alongside an instant re-scroll, and any mismatch between the two
-          showed up as the jump.
+            • on send, the new message scrolls up under the header;
+            • when the reply commits nothing moves, because the reserve is
+              the same size before and after;
+            • scrolling up and back down lands on that identical view, so the
+              bubble is never clipped under the header and there is never a
+              gap below the reply.
+
+          Two earlier versions got this wrong. A full-viewport reserve left
+          the bottom (ANCHOR_GAP + LIST_BOTTOM_PAD) px past the pinned view,
+          so scrolling back down tucked the bubble under the header. Dropping
+          the reserve to 0 on commit removed all overflow from a short
+          conversation, so the browser clamped scrollTop to 0 and the view
+          snapped back to the first message after every reply.
+
+          Replies taller than the reserve simply grow past it; then the end
+          of the conversation is the bottom of the list, as usual.
         */}
         <div
           ref={anchorRef}
           data-testid="scroll-anchor"
           style={{
-            // Full-height only while a cycle is active, so the new user
-            // message can be pinned to the top. Once the reply has committed
-            // the reserve eases away over 400ms and the conversation settles
-            // flush above the composer, like claude.ai. Leaving it in place
-            // meant scrolling back down landed on the bubble clipped under
-            // the header with a screen of empty space below the reply.
-            minHeight: isActive
-              ? "calc(var(--list-h, 100dvh) - var(--header-h, 60px))"
-              : 0,
-            transition: isActive ? "none" : "min-height 400ms ease-out",
+            minHeight:
+              after.length > 0
+                ? `calc(var(--list-h, 100dvh) - var(--header-h, 60px) - ${ANCHOR_GAP + LIST_BOTTOM_PAD}px)`
+                : 0,
           }}
         >
           {after.map((msg, i) => (
