@@ -34,6 +34,14 @@ export function useAppHeight() {
       // and the composer floats mid-page. Zero everywhere else.
       const top = vv ? Math.max(0, vv.offsetTop) : 0;
       root.style.setProperty("--app-top", `${top}px`);
+      // Keyboard height: how much shorter the visual viewport is than the
+      // layout viewport. The body is fixed, so with the keyboard closed the
+      // two agree; a pinch-zoom also shrinks the visual viewport, hence the
+      // scale check. Below 80px it is toolbar noise, not a keyboard. The
+      // chat header collapses by this amount (see MessageList).
+      const kb =
+        vv && vv.scale === 1 ? Math.max(0, window.innerHeight - vv.height) : 0;
+      root.style.setProperty("--kb-h", kb > 80 ? `${kb}px` : "0px");
       // iOS can leave the layout viewport scrolled after the keyboard closes,
       // which shifts the fixed body out of view. Pin it back.
       if (window.scrollY !== 0) window.scrollTo(0, 0);

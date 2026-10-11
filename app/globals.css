@@ -66,6 +66,7 @@ html {
      applies for the first paint before hydration. */
   --app-h: 100dvh;
   --app-top: 0px;
+  --kb-h: 0px;
 }
 
 body {
