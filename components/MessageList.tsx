@@ -16,8 +16,6 @@ import type { Message, Phase } from "./useChatMachine";
  */
 const ANCHOR_GAP = 8;
 const LIST_BOTTOM_PAD = 24;
-/** Header height with the keyboard closed: 12px padding around a 28px row. */
-const HEADER_H = 52;
 
 interface MessageListProps {
   messages: Message[];
@@ -198,27 +196,16 @@ export function MessageList({
     >
       <div
         ref={headerRef}
-        className="sticky top-0 z-20 flex flex-col items-center justify-end px-4"
+        className="sticky top-0 z-20 flex items-center justify-center px-4 py-3"
         style={{
           // Solid, with no fade below it. A fade (gradient header earlier,
           // then a gradient strip under it) softened the top edge of the
           // user bubble pinned beneath the header — that is the "blended in"
           // border. claude.ai's header is a hard edge; so is this one.
+          // It stays put when the keyboard opens: an earlier version
+          // collapsed it by the keyboard height, and that was asked to be
+          // undone.
           backgroundColor: "var(--bg-primary)",
-          // The header gives way to the software keyboard. `--kb-h` is the
-          // keyboard's height (0 when closed), published per frame from the
-          // visual viewport, so the header's height tracks the keyboard
-          // directly: fully collapsed while it is up, and growing back over
-          // the last 52px of an interactive drag-to-dismiss, as if it were
-          // riding down with the keyboard. The content is bottom-aligned so
-          // it slides out through the top edge rather than being cut off.
-          // Because the header sits at the top of the scroll content, its
-          // collapse moves the conversation up into the vacated space; the
-          // anchor reserve reads `--header-h`, so the scroll range is
-          // unaffected and nothing jumps.
-          height: `clamp(0px, ${HEADER_H}px - var(--kb-h, 0px), ${HEADER_H}px)`,
-          overflow: "hidden",
-          transition: "height 160ms ease-out",
         }}
       >
         <button
@@ -234,10 +221,7 @@ export function MessageList({
             background: "none",
             border: "none",
             padding: 0,
-            // The header's bottom padding lives on the content, not the
-            // box: a border-box height of 0 cannot go below its padding,
-            // and the collapsed header must be 0px, not a 12px strip.
-            margin: "0 0 12px",
+            margin: 0,
             WebkitTapHighlightColor: "transparent",
           }}
         >

@@ -17,10 +17,23 @@ import { useEffect, useLayoutEffect, type RefObject } from "react";
  * resize events; routing those through a re-render is what produces visible
  * jitter. A style-property write only invalidates layout.
  */
+/** Session-remembered software keyboard height, px. */
+const KB_KEY = "claudia:kb-h";
+function readLastKeyboardH(): number | null {
+  try {
+    const v = Number(sessionStorage.getItem(KB_KEY));
+    return v > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 export function useAppHeight() {
   useEffect(() => {
     const root = document.documentElement;
     const vv = window.visualViewport;
+    let lastKeyboardH = readLastKeyboardH();
+    let preShrinkTimer: ReturnType<typeof setTimeout> | undefined;
 
     let frame = 0;
     const apply = () => {
@@ -34,14 +47,22 @@ export function useAppHeight() {
       // and the composer floats mid-page. Zero everywhere else.
       const top = vv ? Math.max(0, vv.offsetTop) : 0;
       root.style.setProperty("--app-top", `${top}px`);
-      // Keyboard height: how much shorter the visual viewport is than the
-      // layout viewport. The body is fixed, so with the keyboard closed the
-      // two agree; a pinch-zoom also shrinks the visual viewport, hence the
-      // scale check. Below 80px it is toolbar noise, not a keyboard. The
-      // chat header collapses by this amount (see MessageList).
+      // Remember how tall the keyboard is (layout viewport minus visual
+      // viewport, at scale 1; under 80px is toolbar noise) so the next focus
+      // can make room for it before it appears — see onFocusIn.
       const kb =
-        vv && vv.scale === 1 ? Math.max(0, window.innerHeight - vv.height) : 0;
-      root.style.setProperty("--kb-h", kb > 80 ? `${kb}px` : "0px");
+        vv && vv.scale === 1 ? Math.round(window.innerHeight - vv.height) : 0;
+      if (kb > 80) {
+        lastKeyboardH = kb;
+        try {
+          sessionStorage.setItem(KB_KEY, String(kb));
+        } catch {
+          /* private mode */
+        }
+      }
+      // A real measurement arrived; the pre-shrink fallback is moot.
+      clearTimeout(preShrinkTimer);
+      preShrinkTimer = undefined;
       // iOS can leave the layout viewport scrolled after the keyboard closes,
       // which shifts the fixed body out of view. Pin it back.
       if (window.scrollY !== 0) window.scrollTo(0, 0);
@@ -53,6 +74,46 @@ export function useAppHeight() {
       frame = requestAnimationFrame(apply);
     };
 
+    /**
+     * Make room for the keyboard *before* it opens.
+     *
+     * iOS Safari decides at focus time whether the focused field will be
+     * covered by the keyboard, and if so pans the visual viewport up to
+     * reveal it while the keyboard animates in. Only once the animation ends
+     * does a visualViewport resize arrive; apply() then shrinks the column
+     * and the pan snaps back. On screen that is the whole page sliding up
+     * and then dropping back — the "refresh" jolt on every tap into the
+     * composer.
+     *
+     * So on focus, on touch devices, the column is shrunk immediately by the
+     * keyboard height measured last time (or a 40% estimate the first time).
+     * The composer is then already above where the keyboard will land, Safari
+     * has nothing to reveal and does not pan, and the resize that follows
+     * confirms a height the layout already has. If no resize arrives within
+     * a second (hardware keyboard, or the estimate was moot) apply() restores
+     * the measured height.
+     */
+    const coarse = () =>
+      window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const onFocusIn = (e: FocusEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t || (t.tagName !== "TEXTAREA" && t.tagName !== "INPUT")) return;
+      if (!coarse()) return;
+      const layoutH = window.innerHeight;
+      const visibleH = vv ? vv.height : layoutH;
+      // Keyboard already up (focus moved between fields): nothing to do.
+      if (layoutH - visibleH > 80) return;
+      const kb = lastKeyboardH ?? Math.round(layoutH * 0.4);
+      root.style.setProperty("--app-h", `${layoutH - kb}px`);
+      clearTimeout(preShrinkTimer);
+      preShrinkTimer = setTimeout(apply, 1000);
+    };
+    const onFocusOut = () => {
+      // The keyboard's closing resize normally handles this; the schedule
+      // covers the case where it never opened.
+      schedule();
+    };
+
     apply();
 
     if (vv) {
@@ -62,15 +123,20 @@ export function useAppHeight() {
     window.addEventListener("orientationchange", schedule);
     // bfcache restore on iOS returns with a stale viewport
     window.addEventListener("pageshow", schedule);
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
 
     return () => {
       if (frame) cancelAnimationFrame(frame);
+      clearTimeout(preShrinkTimer);
       if (vv) {
         vv.removeEventListener("resize", schedule);
         vv.removeEventListener("scroll", schedule);
       }
       window.removeEventListener("orientationchange", schedule);
       window.removeEventListener("pageshow", schedule);
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
     };
   }, []);
 }
